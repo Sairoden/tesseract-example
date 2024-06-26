@@ -12,25 +12,43 @@ export default function PDFToText() {
       .catch(error => console.error("Failed to extract text from pdf", error));
   };
 
+  function extractDocumentTitle(text) {
+    // Regular expression to find the title near "GLDD"
+
+    const titleRegex = /^(?!.*CRM FORM)([A-Z\s\/]+ FORM)(?=.*GLDD)/;
+
+    // Find the title using the regular expression
+    const titleMatch = text.match(titleRegex);
+
+    if (titleMatch && titleMatch[1]) {
+      return titleMatch[1].trim();
+    } else {
+      return "Title not found"; // Return a default message if no title is found
+    }
+  }
+
   useEffect(() => {
     if (text) {
-      // const formNoMatch = text.match(/GLDD\s*[-–]\s*\d+/i);
+      const titleRegex = /CRM\sFORM\sNO\.\s\d+\s+(.+?)\s+FORM/g;
 
-      const formNoPattern = /([A-Z]+)\s*–\s*(\d+)/;
+      // Extracting the title
+      const match = titleRegex.exec(text);
+      const title = match ? match[1] : "Title not found";
 
-      // Match the pattern in the text
-      const formNoMatch = text.match(formNoPattern);
-      let formNo;
+      console.log(title.trim());
 
-      // Check if a match is found and extract the data
-      if (formNoMatch && formNoMatch.length === 3) {
-        const formCode = formNoMatch[1];
-        const formNumber = formNoMatch[2];
-
-        formNo = `${formCode}-${formNumber}`;
-      }
-      console.log(text);
-
+      // console.log(extractDocumentTitle(text)); // Output: NEW GAME REQUEST AND APPROVAL FORM
+      // const formNoPattern = /([A-Z]+)\s*–\s*(\d+)/;
+      // // Match the pattern in the text
+      // const formNoMatch = text.match(formNoPattern);
+      // let formNo;
+      // // Check if a match is found and extract the data
+      // if (formNoMatch && formNoMatch.length === 3) {
+      //   const formCode = formNoMatch[1];
+      //   const formNumber = formNoMatch[2];
+      //   formNo = `${formCode}-${formNumber}`;
+      // }
+      // console.log(text);
       // const revisionNoMatch = text.match(/Revision\s*No\.\s*(\d+)/i);
       // const effectivityMatch = text.match(
       //   /Effectivity\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i
@@ -41,7 +59,6 @@ export default function PDFToText() {
       // const licenseeDateMatch = text.match(
       //   /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([^\s]+)\s+([\d\/-]+\s*[\d\/-]*|[A-Za-z]+\s+\d{1,2},\s+\d{4})/i
       // );
-
       // const newText = {
       //   formNo: formNo ? formNo : null,
       //   revisionNo: revisionNoMatch ? revisionNoMatch[1].trim() : null,
@@ -49,7 +66,6 @@ export default function PDFToText() {
       //   licensee: licenseeMatch ? licenseeMatch[1].trim() : null,
       //   licenseeDate: licenseeDateMatch ? licenseeDateMatch[2].trim() : null,
       // };
-
       // const documentList = {
       //   "GLDD-960": {
       //     title:
@@ -69,13 +85,11 @@ export default function PDFToText() {
       //     ],
       //   },
       // };
-
       // const newText2 = {
       //   ...newText,
       //   title: documentList[newText.formNo]?.title || null,
       //   sections: documentList[newText.formNo]?.sections || null,
       // };
-
       // console.log(newText2);
     }
   }, [text]);
