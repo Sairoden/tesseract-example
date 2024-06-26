@@ -2,12 +2,7 @@
 
 import { useState, useRef } from "react";
 import Tesseract from "tesseract.js";
-<<<<<<< HEAD
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
-=======
-import * as pdfjsLib from "pdfjs-dist";
-
->>>>>>> 3a65d9b338d0d44c8cdeac9dbcfbbc52e694a84d
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import styled from "styled-components";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"; // used for modifying pdfs
@@ -27,7 +22,6 @@ export default function TesseractComponent() {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const pdfViewerRef = useRef(null);
-  const [pdfUrl, setPdfUrl] = useState(null);
   const [dataUrl, setDataUrl] = useState(""); // data url of qr json
 
   const handleFileChange = (event) => {
@@ -266,55 +260,6 @@ export default function TesseractComponent() {
     });
   };
 
-<<<<<<< HEAD
-=======
-  const handleFileRecognition = async () => {
-    if (!file) return;
-
-    setLoading(true);
-    setText("");
-
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const numPages = pdf.numPages;
-      const texts = [];
-
-      for (let i = 1; i <= numPages; i++) {
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 2 });
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport,
-        };
-
-        await page.render(renderContext).promise;
-
-        const imageDataUrl = canvas.toDataURL();
-
-        const result = await Tesseract.recognize(imageDataUrl, "eng", {
-          logger: m => console.log(m),
-        });
-
-        texts.push(result.data.text);
-        console.log(text);
-      }
-
-      setText(texts.join("\n"));
-    } catch (err) {
-      console.error(err);
-      setText("Error processing the file.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
->>>>>>> 3a65d9b338d0d44c8cdeac9dbcfbbc52e694a84d
   return (
     <StyledContainer>
       <input type="file" onChange={handleFileChange} accept="application/pdf" />
