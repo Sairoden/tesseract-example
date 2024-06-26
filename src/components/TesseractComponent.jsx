@@ -2,19 +2,19 @@
 
 import { useState, useRef } from "react";
 import Tesseract from "tesseract.js";
-import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import * as pdfjsLib from "pdfjs-dist";
 
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-// pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export default function TesseractComponent() {
   const [file, setFile] = useState(null);
   const [text, setText] = useState("");
+  const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const pdfViewerRef = useRef(null);
-  const [pdfUrl, setPdfUrl] = useState(null);
 
   const handleFileChange = event => {
     setFile(event.target.files[0]);
@@ -78,6 +78,7 @@ export default function TesseractComponent() {
         });
 
         texts.push(result.data.text);
+        console.log(text);
       }
 
       setText(texts.join("\n"));
@@ -97,7 +98,6 @@ export default function TesseractComponent() {
       </button>
       {pdfUrl && (
         <div>
-          <h2>PDF Preview</h2>
           <iframe
             src={pdfUrl}
             type="application/pdf"

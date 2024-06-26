@@ -1,10 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   webpack: config => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      "pdfjs-dist/webpack": "pdfjs-dist/build/webpack",
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+      crypto: false,
     };
+
     return config;
   },
 };
