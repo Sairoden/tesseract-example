@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: config => {
+  webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
-      "pdfjs-dist/webpack": "pdfjs-dist/build/webpack",
+      // "pdfjs-dist/webpack": "pdfjs-dist/build/webpack",
     };
     return config;
   },
