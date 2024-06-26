@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Tesseract from "tesseract.js";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import styled from "styled-components";
@@ -194,7 +193,7 @@ export default function TesseractComponent() {
         const textValue = DATA[1].data;
         const textLength = textValue.length * 3.16;
         const xWidthTxt = 571; // width until end of qr
-        let calculatedWidth = xWidth - textLength;
+        let calculatedWidth = xWidthTxt - textLength;
 
         while (calculatedWidth + textLength < xWidthTxt) {
           calculatedWidth++;
