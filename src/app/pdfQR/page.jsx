@@ -133,20 +133,21 @@ export default function TesseractComponent() {
     const DATA = [
       { data: `Date and Time: ${formattedDateTime}\n`, mode: "byte" }, // dateAndTime
       { data: `CTS No.: ${ctsNo}`, mode: "byte" }, // ctsNo, from ocr, formatted date & time, and generated reference number
+      // { data: `01234567890-~!@#$%^&*()_[];',./{}:"<>?`, mode: "byte" }, // ctsNo, from ocr, formatted date & time, and generated reference number
       { data: `\nLicensee: ${licensee}`, mode: "byte" }, // licensee, from ocr
       { data: `\nDepartment: ${department}`, mode: "byte" }, // department, from ocr
       { data: `\nDocument Type: ${docType}`, mode: "byte" }, // documentType, from ocr
     ];
 
     try {
-    // Generate QR png
-    QRCode.toDataURL(DATA, { width: 300 }, async (err, dataUrl) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
+      // Generate QR png
+      QRCode.toDataURL(DATA, { width: 300 }, async (err, dataUrl) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
 
-      setDataUrl(dataUrl);
+        setDataUrl(dataUrl);
 
         const pdfBuffer = await file.arrayBuffer();
 
@@ -165,7 +166,7 @@ export default function TesseractComponent() {
         );
 
         const pngImage = await pdfDoc.embedPng(pngImageBytes);
-        const pngDims = pngImage.scale(0.1);
+        const pngDims = pngImage.scale(0.15);
 
         const xWidthImg = 264; // 3001
         const xSizeImg =
@@ -191,8 +192,31 @@ export default function TesseractComponent() {
           StandardFonts.HelveticaBold
         );
         const textValue = DATA[1].data;
-        const textLength = textValue.length * 3.16;
-        const xWidthTxt = 571; // width until end of qr
+        // const textLength = textValue.length * 3.16; // 6 font size
+        // 595.32 / 267.5 = 2.2254953271 // 4 font size
+
+        // const textArray = textValue.split("");
+        // const specialCharactersRegex = /[ !"'()*,-.:;?[\\\]^`{|}]/;
+        // let specialCharCount = 0;
+        // const countSpecialCharacters = () => {
+        //   textArray.forEach((char) => {
+        //     if (specialCharactersRegex.test(char)) {
+        //       specialCharCount++;
+        //     }
+        //   });
+        //   return specialCharCount;
+        // };
+        // countSpecialCharacters();
+        // const specialCharLength =
+        //   specialCharCount * (firstPage.getWidth() / 267.5 / 2);
+
+        // const textLength =
+        //   textValue.length * (firstPage.getWidth() / 267.5) + specialCharCount; // 4 font size
+        const textLength = textValue.length * (firstPage.getWidth() / 267.5); // 4 font size
+
+        console.log("Final textLength:", textLength);
+
+        const xWidthTxt = 578; // width until end of qr
         let calculatedWidth = xWidthTxt - textLength;
 
         while (calculatedWidth + textLength < xWidthTxt) {
@@ -203,12 +227,13 @@ export default function TesseractComponent() {
           calculatedWidth--;
         }
 
-        const xSize = calculatedWidth;
+        const xSizeTxt = calculatedWidth;
+        console.log(firstPage.getWidth());
         const ySizeTxt =
           firstPage.getHeight() / 2 - pngDims.height - (yHeightImg + 5);
 
         firstPage.drawText(textValue, {
-          x: xSize,
+          x: xSizeTxt,
           y: ySizeTxt,
           size: 4,
           font: boldHelveticaFont,
@@ -264,12 +289,12 @@ export default function TesseractComponent() {
           await page.render(renderContext).promise;
         }
       });
-      } catch (err) {
-        console.error(err);
-        setText("Error processing the file.");
-      } finally {
-        setLoading(false);
-      }
+    } catch (err) {
+      console.error(err);
+      setText("Error processing the file.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const setPdfViewer = (file) => {
