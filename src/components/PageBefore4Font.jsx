@@ -1,5 +1,7 @@
 "use client";
 
+// Page before chang font to 4
+
 import { useState, useRef } from "react";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
@@ -139,14 +141,14 @@ export default function TesseractComponent() {
     ];
 
     try {
-    // Generate QR png
-    QRCode.toDataURL(DATA, { width: 300 }, async (err, dataUrl) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
+      // Generate QR png
+      QRCode.toDataURL(DATA, { width: 300 }, async (err, dataUrl) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
 
-      setDataUrl(dataUrl);
+        setDataUrl(dataUrl);
 
         const pdfBuffer = await file.arrayBuffer();
 
@@ -264,12 +266,12 @@ export default function TesseractComponent() {
           await page.render(renderContext).promise;
         }
       });
-      } catch (err) {
-        console.error(err);
-        setText("Error processing the file.");
-      } finally {
-        setLoading(false);
-      }
+    } catch (err) {
+      console.error(err);
+      setText("Error processing the file.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const setPdfViewer = (file) => {
