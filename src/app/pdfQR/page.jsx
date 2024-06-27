@@ -56,13 +56,15 @@ export default function TesseractComponent() {
     return newText;
   }
 
-  const handleFileChange = event => {
+  const handleFileChange = (event) => {
     const inputfile = event.target.files[0];
     setFile(inputfile);
 
     pdfToText(inputfile)
-      .then(text => setText(text))
-      .catch(error => console.error("Failed to extract text from pdf", error));
+      .then((text) => setText(text))
+      .catch((error) =>
+        console.error("Failed to extract text from pdf", error)
+      );
   };
 
   const handleFileRecognition = async () => {
@@ -126,12 +128,6 @@ export default function TesseractComponent() {
           console.error(err);
           return;
         }
-      // Generate QR png
-      QRCode.toDataURL(DATA, { width: 300 }, async (err, dataUrl) => {
-        if (err) {
-          console.error(err);
-          return;
-        }
 
         setDataUrl(dataUrl);
         setDataUrl(dataUrl);
@@ -148,7 +144,7 @@ export default function TesseractComponent() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then(res =>
+        const pngImageBytes = await fetch(pngUrl).then((res) =>
           res.arrayBuffer()
         );
 
@@ -283,20 +279,14 @@ export default function TesseractComponent() {
     } finally {
       setLoading(false);
     }
-    } catch (err) {
-      console.error(err);
-      setText("Error processing the file.");
-    } finally {
-      setLoading(false);
-    }
   };
 
-  const setPdfViewer = file => {
+  const setPdfViewer = (file) => {
     if (!file) return;
 
     const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
-    loadingTask.promise.then(pdf => {
-      pdf.getPage(1).then(page => {
+    loadingTask.promise.then((pdf) => {
+      pdf.getPage(1).then((page) => {
         const viewport = page.getViewport({ scale: 1.5 });
         const canvas = pdfViewerRef.current;
         const context = canvas.getContext("2d");
