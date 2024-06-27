@@ -24,73 +24,52 @@ export default function TesseractComponent() {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [dataUrl, setDataUrl] = useState(""); // data url of qr json
 
-  const handleFileChange = (event) => {
-    const inputfile = event.target.files[0];
-    setFile(inputfile);
+  function convertOCR(text) {
+    let cleanedText = text.replace(/CRM FORM/g, "");
 
-    pdfToText(inputfile)
-      .then((text) => setText(text))
-      .catch((error) =>
-        console.error("Failed to extract text from pdf", error)
-      );
-  };
+    // TITLE
+    const titleRegex = /([A-Z\s\/]+ FORM)(?=.*GLDD)/;
+    let titleMatch = titleRegex.exec(cleanedText);
 
-  const handleFileRecognition = async () => {
-    if (!file) return;
-
-    setLoading(true);
-    setText("");
-
+    // FORM NO
     const formNoPattern = /([A-Z]+)\s*–\s*(\d+)/;
-    // Match the pattern in the text
-    const formNoMatch = text.match(formNoPattern);
+    const formNoMatch = cleanedText.match(formNoPattern);
+
     let formNo;
-    // Check if a match is found and extract the data
     if (formNoMatch && formNoMatch.length === 3) {
       const formCode = formNoMatch[1];
       const formNumber = formNoMatch[2];
       formNo = `${formCode}-${formNumber}`;
     }
-    const revisionNoMatch = text.match(/Revision\s*No\.\s*(\d+)/i);
-    const effectivityMatch = text.match(
-      /Effectivity\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i
-    );
-    const licenseeMatch = text.match(
+
+    // LICENSEE
+    const licenseeMatch = cleanedText.match(
       /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([^\s]+)/i
     );
+
     const newText = {
+      title: titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : null,
       formNo: formNo ? formNo : null,
-      revisionNo: revisionNoMatch ? revisionNoMatch[1].trim() : null,
-      effectivity: effectivityMatch ? effectivityMatch[1].trim() : null,
       licensee: licenseeMatch ? licenseeMatch[1].trim() : null,
     };
 
-    const documentList = {
-      "GLDD-960": {
-        title:
-          "INSTALLATION AND/OR OPERATION OF GAMING TABLES NOTIFICATION FORM",
-        sections: [
-          "SECTION A: OPERATION OF GAMING TABLES",
-          "SECTION B: SUBMISSION INSTRUCTIONS",
-          "SECTION C: ACKNOWLEDGMENT OF NOTIFICATION",
-        ],
-      },
-      "GLDD-964": {
-        title: "NEW GAME REQUEST AND APPROVAL FORM",
-        sections: [
-          "SECTION A: PROPOSED NEW GAME",
-          "SECTION B: SUBMISSION INSTRUCTION",
-          "SECTION C: ACTION TAKEN",
-        ],
-      },
-    };
-    const newText2 = {
-      ...newText,
-      title: documentList[newText.formNo]?.title || null,
-      sections: documentList[newText.formNo]?.sections || null,
-    };
+    return newText;
+  }
 
-    console.log(newText2);
+  const handleFileChange = event => {
+    const inputfile = event.target.files[0];
+    setFile(inputfile);
+
+    pdfToText(inputfile)
+      .then(text => setText(text))
+      .catch(error => console.error("Failed to extract text from pdf", error));
+  };
+
+  const handleFileRecognition = async () => {
+    if (!file) return;
+    setLoading(true);
+
+    let OCRData = convertOCR(text);
 
     // Data of formatted date and time
     const currentDate = new Date();
@@ -114,21 +93,20 @@ export default function TesseractComponent() {
     const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
 
     // Data of CTS
-    const gldd = "GLDD-1234"; // from ocr
+    const formNo = OCRData.formNo; // from ocr
     const dateArray = formattedDate.split("/");
     const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
-    const docType = "Inter-office Memorandum"; // from ocr?
+    const docType = OCRData.title; // from ocr?
     // const refNumber = uuidv4(); // 36 characters with 3 dashes / 33 without dashes
 
     // Combine data of CTS
-    const ctsNo = `${gldd}_${docType}_${splitDate}`;
+    const ctsNo = `${formNo}_${docType}_${splitDate}`;
 
     // Data of Licensee
-    const licensee = "sample_license_3001";
+    const licensee = OCRData.licensee;
 
     // Data of Department
-    const departmentArray = gldd.split("-");
-    const department = departmentArray[0];
+    const department = formNo.split("-")[0];
 
     const DATA = [
       { data: `Date and Time: ${formattedDateTime}\n`, mode: "byte" }, // dateAndTime
@@ -138,15 +116,17 @@ export default function TesseractComponent() {
       { data: `\nDocument Type: ${docType}`, mode: "byte" }, // documentType, from ocr
     ];
 
-    try {
-    // Generate QR png
-    QRCode.toDataURL(DATA, { width: 300 }, async (err, dataUrl) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
+    console.log(DATA);
 
-      setDataUrl(dataUrl);
+    try {
+      // Generate QR png
+      QRCode.toDataURL(DATA, { width: 300 }, async (err, dataUrl) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+
+        setDataUrl(dataUrl);
 
         const pdfBuffer = await file.arrayBuffer();
 
@@ -160,7 +140,7 @@ export default function TesseractComponent() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then((res) =>
+        const pngImageBytes = await fetch(pngUrl).then(res =>
           res.arrayBuffer()
         );
 
@@ -190,9 +170,11 @@ export default function TesseractComponent() {
         const boldHelveticaFont = await pdfDoc.embedFont(
           StandardFonts.HelveticaBold
         );
+        // let textValue = "0";
         const textValue = DATA[1].data;
-        const textLength = textValue.length * 3.16;
-        const xWidthTxt = 571; // width until end of qr
+        // const textLength = textValue.length * 3.16;
+        const textLength = textValue.length;
+        const xWidthTxt = 575; // width until end of qr
         let calculatedWidth = xWidthTxt - textLength;
 
         while (calculatedWidth + textLength < xWidthTxt) {
@@ -203,7 +185,13 @@ export default function TesseractComponent() {
           calculatedWidth--;
         }
 
-        const xSize = calculatedWidth;
+        // while (textLength !== firstPage.getWidth()) {
+        //   textValue = textValue + "0";
+        // }
+
+        // const xSize = calculatedWidth;
+        const xSize = 0;
+        console.log(firstPage.getWidth());
         const ySizeTxt =
           firstPage.getHeight() / 2 - pngDims.height - (yHeightImg + 5);
 
@@ -221,25 +209,25 @@ export default function TesseractComponent() {
         // Convert Uint8Array to Blob
         const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-        // Download feature
-        // Create a URL for the Blob
-        const url = URL.createObjectURL(blob);
+        // // Download feature
+        // // Create a URL for the Blob
+        // const url = URL.createObjectURL(blob);
 
-        // Create a temporary link element
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "pdf-lib_modification_example.pdf";
+        // // Create a temporary link element
+        // const link = document.createElement("a");
+        // link.href = url;
+        // link.download = "pdf-lib_modification_example.pdf";
 
-        // // Append the link to the body
-        document.body.appendChild(link);
+        // // // Append the link to the body
+        // document.body.appendChild(link);
 
-        // // Trigger the download
-        link.click();
+        // // // Trigger the download
+        // link.click();
 
-        // // Clean up
-        URL.revokeObjectURL(url);
-        document.body.removeChild(link);
-        // End of download feature
+        // // // Clean up
+        // URL.revokeObjectURL(url);
+        // document.body.removeChild(link);
+        // // End of download feature
 
         // PDF Viewer
         setPdfViewer(blob);
@@ -264,20 +252,20 @@ export default function TesseractComponent() {
           await page.render(renderContext).promise;
         }
       });
-      } catch (err) {
-        console.error(err);
-        setText("Error processing the file.");
-      } finally {
-        setLoading(false);
-      }
+    } catch (err) {
+      console.error(err);
+      setText("Error processing the file.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const setPdfViewer = (file) => {
+  const setPdfViewer = file => {
     if (!file) return;
 
     const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
-    loadingTask.promise.then((pdf) => {
-      pdf.getPage(1).then((page) => {
+    loadingTask.promise.then(pdf => {
+      pdf.getPage(1).then(page => {
         const viewport = page.getViewport({ scale: 1.5 });
         const canvas = pdfViewerRef.current;
         const context = canvas.getContext("2d");
