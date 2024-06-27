@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Tesseract from "tesseract.js";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import styled from "styled-components";
@@ -25,13 +24,15 @@ export default function TesseractComponent() {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [dataUrl, setDataUrl] = useState(""); // data url of qr json
 
-  const handleFileChange = event => {
+  const handleFileChange = (event) => {
     const inputfile = event.target.files[0];
     setFile(inputfile);
 
     pdfToText(inputfile)
-      .then(text => setText(text))
-      .catch(error => console.error("Failed to extract text from pdf", error));
+      .then((text) => setText(text))
+      .catch((error) =>
+        console.error("Failed to extract text from pdf", error)
+      );
   };
 
   function convertOCR(text) {
@@ -106,11 +107,18 @@ export default function TesseractComponent() {
     // Combine data of CTS
     const ctsNo = `${gldd}_${docType}_${splitDate}`;
 
+    // Data of Licensee
+    const licensee = "sample_license_3001";
+
+    // Data of Department
+    const departmentArray = gldd.split("-");
+    const department = departmentArray[0];
+
     const DATA = [
       { data: `Date and Time: ${formattedDateTime}\n`, mode: "byte" }, // dateAndTime
       { data: `CTS No.: ${ctsNo}`, mode: "byte" }, // ctsNo, from ocr, formatted date & time, and generated reference number
-      { data: `\nLicensee: sample_license_123456789`, mode: "byte" }, // licensee, from ocr
-      { data: `\nDepartment: OGLD`, mode: "byte" }, // department, from ocr
+      { data: `\nLicensee: ${licensee}`, mode: "byte" }, // licensee, from ocr
+      { data: `\nDepartment: ${department}`, mode: "byte" }, // department, from ocr
       { data: `\nDocument Type: ${docType}`, mode: "byte" }, // documentType, from ocr
     ];
 
@@ -136,18 +144,25 @@ export default function TesseractComponent() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then(res =>
+        const pngImageBytes = await fetch(pngUrl).then((res) =>
           res.arrayBuffer()
         );
 
         const pngImage = await pdfDoc.embedPng(pngImageBytes);
-        const pngDims = pngImage.scale(0.2);
+        const pngDims = pngImage.scale(0.1);
+
+        const xWidthImg = 264; // 3001
+        const xSizeImg =
+          firstPage.getWidth() / 2 - pngDims.width / 2 + xWidthImg;
+        const yHeightImg = 370; // 3001
+        const ySizeImg =
+          firstPage.getHeight() / 2 - pngDims.height - yHeightImg;
 
         // Get the width and height of the first page
         const { width, height } = firstPage.getSize();
         firstPage.drawImage(pngImage, {
-          x: firstPage.getWidth() / 2 - pngDims.width / 2 + 250,
-          y: firstPage.getHeight() / 2 - pngDims.height - 350,
+          x: xSizeImg,
+          y: ySizeImg,
           width: pngDims.width,
           height: pngDims.height,
         });
@@ -160,18 +175,25 @@ export default function TesseractComponent() {
           StandardFonts.HelveticaBold
         );
         const textValue = DATA[1].data;
-        const textLength = textValue.length * 3.15;
-        const xWidth = 569; // width until end of qr
-        let calculatedWidth = xWidth - textLength;
+        const textLength = textValue.length * 3.16;
+        const xWidthTxt = 571; // width until end of qr
+        let calculatedWidth = xWidthTxt - textLength;
 
-        while (calculatedWidth + textLength !== xWidth) {
+        while (calculatedWidth + textLength < xWidthTxt) {
           calculatedWidth++;
         }
+
+        while (calculatedWidth + textLength > xWidthTxt) {
+          calculatedWidth--;
+        }
+
         const xSize = calculatedWidth;
+        const ySizeTxt =
+          firstPage.getHeight() / 2 - pngDims.height - (yHeightImg + 5);
 
         firstPage.drawText(textValue, {
           x: xSize,
-          y: firstPage.getHeight() / 2 - pngDims.height - 355,
+          y: ySizeTxt,
           size: 6,
           font: boldHelveticaFont,
           color: rgb(0, 0, 0),
@@ -182,6 +204,26 @@ export default function TesseractComponent() {
 
         // Convert Uint8Array to Blob
         const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
+
+        // Download feature
+        // Create a URL for the Blob
+        // const url = URL.createObjectURL(blob);
+
+        // Create a temporary link element
+        // const link = document.createElement("a");
+        // link.href = url;
+        // link.download = "pdf-lib_modification_example.pdf";
+
+        // // Append the link to the body
+        // document.body.appendChild(link);
+
+        // // Trigger the download
+        // link.click();
+
+        // // Clean up
+        // URL.revokeObjectURL(url);
+        // document.body.removeChild(link);
+        // End of download feature
 
         // PDF Viewer
         setPdfViewer(blob);
@@ -214,12 +256,12 @@ export default function TesseractComponent() {
     });
   };
 
-  const setPdfViewer = file => {
+  const setPdfViewer = (file) => {
     if (!file) return;
 
     const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
-    loadingTask.promise.then(pdf => {
-      pdf.getPage(1).then(page => {
+    loadingTask.promise.then((pdf) => {
+      pdf.getPage(1).then((page) => {
         const viewport = page.getViewport({ scale: 1.5 });
         const canvas = pdfViewerRef.current;
         const context = canvas.getContext("2d");
