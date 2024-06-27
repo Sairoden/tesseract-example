@@ -3,9 +3,15 @@
 import { useState, useRef } from "react";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
-import { PDFDocument } from "pdf-lib";
-import QRCode from "qrcode";
+import styled from "styled-components";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib"; // used for modifying pdfs
+import QRCode from "qrcode"; // used for generating QR codes
 import pdfToText from "react-pdftotext";
+
+// import { v4 as uuidv4 } from "uuid"; // To generate a unique filename (if refNumber is needed)
+
+// DATA
+// import { SAMPLE } from "../data";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 // pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -87,17 +93,16 @@ export default function TesseractComponent() {
 
     // Combine date and time parts
     const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
-    // End of date and time data
 
     // Data of CTS
     const formNo = OCRData.formNo; // from ocr
     const dateArray = formattedDate.split("/");
     const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
-    const docType = OCRData.title;
+    const docType = OCRData.title; // from ocr?
+    // const refNumber = uuidv4(); // 36 characters with 3 dashes / 33 without dashes
 
     // Combine data of CTS
     const ctsNo = `${formNo}_${docType}_${splitDate}`;
-    // End of CTS data
 
     // Data of Licensee
     const licensee = OCRData.licensee;
@@ -106,12 +111,15 @@ export default function TesseractComponent() {
     const department = formNo.split("-")[0];
 
     const DATA = [
-      { data: `Date and Time: ${formattedDateTime}\n`, mode: "byte" },
-      { data: `CTS No.: ${ctsNo}`, mode: "byte" },
-      { data: `\nLicensee: ${licensee}`, mode: "byte" },
-      { data: `\nDepartment: ${department}`, mode: "byte" },
-      { data: `\nDocument Type: ${docType}`, mode: "byte" },
+      { data: `Date and Time: ${formattedDateTime}\n`, mode: "byte" }, // dateAndTime
+      { data: `CTS No.: ${ctsNo}`, mode: "byte" }, // ctsNo, from ocr, formatted date & time, and generated reference number
+      // { data: `01234567890-~!@#$%^&*()_[];',./{}:"<>?`, mode: "byte" }, // ctsNo, from ocr, formatted date & time, and generated reference number
+      { data: `\nLicensee: ${licensee}`, mode: "byte" }, // licensee, from ocr
+      { data: `\nDepartment: ${department}`, mode: "byte" }, // department, from ocr
+      { data: `\nDocument Type: ${docType}`, mode: "byte" }, // documentType, from ocr
     ];
+
+    console.log(DATA);
 
     try {
       // Generate QR png
@@ -143,34 +151,105 @@ export default function TesseractComponent() {
         const pngImage = await pdfDoc.embedPng(pngImageBytes);
         const pngDims = pngImage.scale(0.1);
 
-        // Get the dimensions of the first page or document
-        const pageWidth = firstPage.getWidth();
-        const pageHeight = firstPage.getHeight();
+        const xWidthImg = 264; // 3001
+        const xSizeImg =
+          firstPage.getWidth() / 2 - pngDims.width / 2 + xWidthImg;
+        const yHeightImg = 370; // 3001
+        const ySizeImg =
+          firstPage.getHeight() / 2 - pngDims.height - yHeightImg;
 
-        // Calculate the position to place the image in the lower right corner
-        const imageWidth = pngDims.width;
-        const imageHeight = pngDims.height;
-        const xMargin = 5;
-        const yMargin = 10;
-        const margin = xMargin + yMargin;
-
-        const posX = pageWidth - imageWidth - margin;
-        // const posY = pageHeight - imageHeight - margin; // upper right corner position
-        const posY = yMargin;
-
-        // Draw the image on the first page of the document
+        // Get the width and height of the first page
+        const { width, height } = firstPage.getSize();
         firstPage.drawImage(pngImage, {
-          x: posX,
-          y: posY,
-          width: imageWidth,
-          height: imageHeight,
+          x: xSizeImg,
+          y: ySizeImg,
+          width: pngDims.width,
+          height: pngDims.height,
         });
+
+        // Embed text
+        // Normal font
+        // const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        // Bold font
+        const boldHelveticaFont = await pdfDoc.embedFont(
+          StandardFonts.HelveticaBold
+        );
+        // let textValue = "0";
+        const textValue = DATA[1].data;
+        // const textLength = textValue.length * 3.16; // 6 font size
+        // 595.32 / 267.5 = 2.2254953271 // 4 font size
+
+        // const textArray = textValue.split("");
+        // const specialCharactersRegex = /[ !"'()*,-.:;?[\\\]^`{|}]/;
+        // let specialCharCount = 0;
+        // const countSpecialCharacters = () => {
+        //   textArray.forEach((char) => {
+        //     if (specialCharactersRegex.test(char)) {
+        //       specialCharCount++;
+        //     }
+        //   });
+        //   return specialCharCount;
+        // };
+        // countSpecialCharacters();
+        // const specialCharLength =
+        //   specialCharCount * (firstPage.getWidth() / 267.5 / 2);
+
+        // const textLength =
+        //   textValue.length * (firstPage.getWidth() / 267.5) + specialCharCount; // 4 font size
+        const textLength = textValue.length * (firstPage.getWidth() / 267.5); // 4 font size
+
+        console.log("Final textLength:", textLength);
+
+        const xWidthTxt = 578; // width until end of qr
+        let calculatedWidth = xWidthTxt - textLength;
+
+        while (calculatedWidth + textLength < xWidthTxt) {
+          calculatedWidth++;
+        }
+
+        while (calculatedWidth + textLength > xWidthTxt) {
+          calculatedWidth--;
+        }
+
+        const xSizeTxt = calculatedWidth;
+        console.log(firstPage.getWidth());
+        const ySizeTxt =
+          firstPage.getHeight() / 2 - pngDims.height - (yHeightImg + 5);
+
+        // Embed text
+        // firstPage.drawText(textValue, {
+        //   x: xSizeTxt,
+        //   y: ySizeTxt,
+        //   size: 4,
+        //   font: boldHelveticaFont,
+        //   color: rgb(0, 0, 0),
+        // });
 
         // Serialize the PDFDocument to bytes (a Uint8Array)
         const pdfBytes = await pdfDoc.save();
 
         // Convert Uint8Array to Blob
         const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
+
+        // // Download feature
+        // // Create a URL for the Blob
+        // const url = URL.createObjectURL(blob);
+
+        // // Create a temporary link element
+        // const link = document.createElement("a");
+        // link.href = url;
+        // link.download = "pdf-lib_modification_example.pdf";
+
+        // // // Append the link to the body
+        // document.body.appendChild(link);
+
+        // // // Trigger the download
+        // link.click();
+
+        // // // Clean up
+        // URL.revokeObjectURL(url);
+        // document.body.removeChild(link);
+        // // End of download feature
 
         // PDF Viewer
         setPdfViewer(blob);
@@ -226,7 +305,7 @@ export default function TesseractComponent() {
   };
 
   return (
-    <>
+    <StyledContainer>
       <pre>{text}</pre>
 
       <input type="file" onChange={handleFileChange} accept="application/pdf" />
@@ -246,6 +325,38 @@ export default function TesseractComponent() {
           <canvas ref={pdfViewerRef} />
         </div>
       )}
-    </>
+    </StyledContainer>
   );
 }
+const StyledContainer = styled.div`
+  /* width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column; */
+
+  /* p {
+    font-family: helvetica;
+    font-size: 24px;
+    text-align: center;
+    margin: 25px;
+  }
+ 
+  .small {
+    font-family: helvetica;
+    font-size: 18px;
+    text-align: center;
+    margin: 25px;
+  } */
+
+  /* button {
+    background-color: #008cba;
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    font-size: 16px;
+    margin-top: 2rem;
+  } */
+`;
