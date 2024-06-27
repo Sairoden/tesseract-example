@@ -34,62 +34,46 @@ export default function TesseractComponent() {
       .catch(error => console.error("Failed to extract text from pdf", error));
   };
 
-  const handleFileRecognition = async () => {
-    if (!file) return;
+  function convertOCR(text) {
+    let cleanedText = text.replace(/CRM FORM/g, "");
 
-    setLoading(true);
-    setText("");
+    // TITLE
+    const titleRegex = /([A-Z\s\/]+ FORM)(?=.*GLDD)/;
+    let titleMatch = titleRegex.exec(cleanedText);
 
+    // FORM NO
     const formNoPattern = /([A-Z]+)\s*–\s*(\d+)/;
-    // Match the pattern in the text
-    const formNoMatch = text.match(formNoPattern);
+    const formNoMatch = cleanedText.match(formNoPattern);
+
     let formNo;
-    // Check if a match is found and extract the data
     if (formNoMatch && formNoMatch.length === 3) {
       const formCode = formNoMatch[1];
       const formNumber = formNoMatch[2];
       formNo = `${formCode}-${formNumber}`;
     }
-    const revisionNoMatch = text.match(/Revision\s*No\.\s*(\d+)/i);
-    const effectivityMatch = text.match(
-      /Effectivity\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i
-    );
-    const licenseeMatch = text.match(
+
+    // LICENSEE
+    const licenseeMatch = cleanedText.match(
       /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([^\s]+)/i
     );
+
     const newText = {
+      title: titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : null,
       formNo: formNo ? formNo : null,
-      revisionNo: revisionNoMatch ? revisionNoMatch[1].trim() : null,
-      effectivity: effectivityMatch ? effectivityMatch[1].trim() : null,
       licensee: licenseeMatch ? licenseeMatch[1].trim() : null,
     };
 
-    const documentList = {
-      "GLDD-960": {
-        title:
-          "INSTALLATION AND/OR OPERATION OF GAMING TABLES NOTIFICATION FORM",
-        sections: [
-          "SECTION A: OPERATION OF GAMING TABLES",
-          "SECTION B: SUBMISSION INSTRUCTIONS",
-          "SECTION C: ACKNOWLEDGMENT OF NOTIFICATION",
-        ],
-      },
-      "GLDD-964": {
-        title: "NEW GAME REQUEST AND APPROVAL FORM",
-        sections: [
-          "SECTION A: PROPOSED NEW GAME",
-          "SECTION B: SUBMISSION INSTRUCTION",
-          "SECTION C: ACTION TAKEN",
-        ],
-      },
-    };
-    const newText2 = {
-      ...newText,
-      title: documentList[newText.formNo]?.title || null,
-      sections: documentList[newText.formNo]?.sections || null,
-    };
+    return newText;
+  }
 
-    console.log(newText2);
+  const handleFileRecognition = async () => {
+    if (!file) return;
+
+    const myObject = convertOCR(text);
+    console.log(myObject);
+
+    setLoading(true);
+    setText("");
 
     // Data of formatted date and time
     const currentDate = new Date();
