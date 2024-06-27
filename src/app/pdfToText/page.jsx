@@ -12,30 +12,31 @@ export default function PDFToText() {
       .catch(error => console.error("Failed to extract text from pdf", error));
   };
 
-  function extractDocumentTitle(text) {
-    // Regular expression to find the title near "GLDD"
-
-    const titleRegex = /^(?!.*CRM FORM)([A-Z\s\/]+ FORM)(?=.*GLDD)/;
-
-    // Find the title using the regular expression
-    const titleMatch = text.match(titleRegex);
-
-    if (titleMatch && titleMatch[1]) {
-      return titleMatch[1].trim();
+  function extractTitle(text) {
+    // Regular expression to find the title
+    // let regex = /([\s\S]*?)\sFORM/i;
+    const titleRegex = /([A-Z\s\/]+ FORM)(?=.*GLDD)/;
+    let match = titleRegex.exec(text);
+    if (match) {
+      return match[1].trim();
     } else {
-      return "Title not found"; // Return a default message if no title is found
+      return null; // Handle case where title pattern is not found
     }
   }
 
+  // let cleanedText = text.replace(/CRM FORM/g, '');
+
   useEffect(() => {
     if (text) {
-      const titleRegex = /CRM\sFORM\sNO\.\s\d+\s+(.+?)\s+FORM/g;
+      let cleanedText = text.replace(/CRM FORM/g, "");
 
-      // Extracting the title
-      const match = titleRegex.exec(text);
-      const title = match ? match[1] : "Title not found";
+      let title = extractTitle(cleanedText);
+      console.log("Title of the document:", title);
 
-      console.log(title.trim());
+      console.log("TEST 3");
+
+      // console.log(text);
+      // console.log(extractTitle(text)); // Output: INSTALLATION AND/OR OPERATION OF GAMING TABLES NOTIFICATION
 
       // console.log(extractDocumentTitle(text)); // Output: NEW GAME REQUEST AND APPROVAL FORM
       // const formNoPattern = /([A-Z]+)\s*–\s*(\d+)/;
