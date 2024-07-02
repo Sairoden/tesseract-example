@@ -7,6 +7,8 @@ import { PDFDocument } from "pdf-lib";
 import QRCode from "qrcode";
 import pdfToText from "react-pdftotext";
 
+import "./page.css";
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 // pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
@@ -16,7 +18,6 @@ export default function TesseractComponent() {
   const [loading, setLoading] = useState(false);
   const pdfViewerRef = useRef(null);
   const [pdfUrl, setPdfUrl] = useState(null);
-  const [dataUrl, setDataUrl] = useState(""); // data url of qr json
 
   function convertOCR(text) {
     let cleanedText = text.replace(/CRM FORM/g, "");
@@ -50,15 +51,13 @@ export default function TesseractComponent() {
     return newText;
   }
 
-  const handleFileChange = (event) => {
+  const handleFileChange = event => {
     const inputfile = event.target.files[0];
     setFile(inputfile);
 
     pdfToText(inputfile)
-      .then((text) => setText(text))
-      .catch((error) =>
-        console.error("Failed to extract text from pdf", error)
-      );
+      .then(text => setText(text))
+      .catch(error => console.error("Failed to extract text from pdf", error));
   };
 
   const handleFileRecognition = async () => {
@@ -121,9 +120,6 @@ export default function TesseractComponent() {
           return;
         }
 
-        setDataUrl(dataUrl);
-        setDataUrl(dataUrl);
-
         const pdfBuffer = await file.arrayBuffer();
 
         // Load the PDFDocument from the ArrayBuffer
@@ -136,7 +132,7 @@ export default function TesseractComponent() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then((res) =>
+        const pngImageBytes = await fetch(pngUrl).then(res =>
           res.arrayBuffer()
         );
 
@@ -169,31 +165,35 @@ export default function TesseractComponent() {
         // Serialize the PDFDocument to bytes (a Uint8Array)
         const pdfBytes = await pdfDoc.save();
 
+        console.log(pdfBytes);
+
         // Convert Uint8Array to Blob
         const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
+        console.log(blob);
+
         // PDF Viewer
-        setPdfViewer(blob);
         setPdfUrl(URL.createObjectURL(blob));
+        // setPdfViewer(blob);
 
-        const pdf = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
-        const numPages = pdf.numPages;
+        // const pdf = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
+        // const numPages = pdf.numPages;
 
-        for (let i = 1; i <= numPages; i++) {
-          const page = await pdf.getPage(i);
-          const viewport = page.getViewport({ scale: 2 });
-          const canvas = document.createElement("canvas");
-          const context = canvas.getContext("2d");
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
+        // for (let i = 1; i <= numPages; i++) {
+        //   const page = await pdf.getPage(i);
+        //   const viewport = page.getViewport({ scale: 2 });
+        //   const canvas = document.createElement("canvas");
+        //   const context = canvas.getContext("2d");
+        //   canvas.height = viewport.height;
+        //   canvas.width = viewport.width;
 
-          const renderContext = {
-            canvasContext: context,
-            viewport: viewport,
-          };
+        //   const renderContext = {
+        //     canvasContext: context,
+        //     viewport: viewport,
+        //   };
 
-          await page.render(renderContext).promise;
-        }
+        //   await page.render(renderContext).promise;
+        // }
       });
     } catch (err) {
       console.error(err);
@@ -203,31 +203,31 @@ export default function TesseractComponent() {
     }
   };
 
-  const setPdfViewer = (file) => {
-    if (!file) return;
+  // const setPdfViewer = file => {
+  //   if (!file) return;
 
-    const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
-    loadingTask.promise.then((pdf) => {
-      pdf.getPage(1).then((page) => {
-        const viewport = page.getViewport({ scale: 1.5 });
-        const canvas = pdfViewerRef.current;
-        const context = canvas.getContext("2d");
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+  //   const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
+  //   loadingTask.promise.then(pdf => {
+  //     pdf.getPage(1).then(page => {
+  //       const viewport = page.getViewport({ scale: 1.5 });
+  //       const canvas = pdfViewerRef.current;
+  //       const context = canvas.getContext("2d");
+  //       canvas.height = viewport.height;
+  //       canvas.width = viewport.width;
 
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport,
-        };
+  //       const renderContext = {
+  //         canvasContext: context,
+  //         viewport: viewport,
+  //       };
 
-        page.render(renderContext);
-      });
-    });
-  };
+  //       page.render(renderContext);
+  //     });
+  //   });
+  // };
 
   return (
     <>
-      <pre>{text}</pre>
+      <h1 className="title">Hello World</h1>
 
       <input type="file" onChange={handleFileChange} accept="application/pdf" />
       <button onClick={handleFileRecognition} disabled={loading}>
@@ -236,13 +236,34 @@ export default function TesseractComponent() {
       {pdfUrl && (
         <div>
           <h2>PDF Preview</h2>
-          <iframe
-            src={pdfUrl}
-            type="application/pdf"
-            width="100%"
-            height="600px"
-          />
 
+          <div className="pdf-container">
+            <object
+              width="100%"
+              height={600}
+              data={`${pdfUrl}#view=Fit&toolbar=0&statusbar=0&messages=0&navpanes=0&scrollbar=0`}
+              type="application/pdf"
+              className="pdfObject"
+              frameborder="0"
+              allowfullscreen
+            />
+
+            <embed
+              src={`${pdfUrl}#view=Fit&toolbar=0&statusbar=0&messages=0&navpanes=0&scrollbar=0`}
+              type="application/pdf"
+              width="100%"
+              height="600"
+              frameBorder="0"
+            />
+
+            <iframe
+              src={`${pdfUrl}#view=Fit&toolbar=0&statusbar=0&messages=0&navpanes=0&scrollbar=0`}
+              type="application/pdf"
+              width="100%"
+              height="600px"
+              frameBorder="0"
+            />
+          </div>
           <canvas ref={pdfViewerRef} />
         </div>
       )}
