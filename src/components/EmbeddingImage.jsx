@@ -16,7 +16,7 @@ import QRCode from "qrcode"; // used for generating QR codes
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 // pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-export default function TesseractComponent() {
+export default function EmbeddingImage() {
   const [file, setFile] = useState(null);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ export default function TesseractComponent() {
   const [pdfModified, setPdfModified] = useState(false);
   const [dataUrl, setDataUrl] = useState(""); // data url of qr json
 
-  const handleFileChange = (event) => {
+  const handleFileChange = event => {
     const inputfile = event.target.files[0];
     setFile(inputfile);
   };
@@ -97,7 +97,7 @@ export default function TesseractComponent() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then((res) =>
+        const pngImageBytes = await fetch(pngUrl).then(res =>
           res.arrayBuffer()
         );
 
@@ -201,7 +201,7 @@ export default function TesseractComponent() {
           const imageDataUrl = canvas.toDataURL();
 
           const result = await Tesseract.recognize(imageDataUrl, "eng", {
-            logger: (m) => console.log(m),
+            logger: m => console.log(m),
           });
 
           texts.push(result.data.text);
@@ -217,12 +217,12 @@ export default function TesseractComponent() {
     });
   };
 
-  const setPdfViewer = (file) => {
+  const setPdfViewer = file => {
     if (!file) return;
 
     const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
-    loadingTask.promise.then((pdf) => {
-      pdf.getPage(1).then((page) => {
+    loadingTask.promise.then(pdf => {
+      pdf.getPage(1).then(page => {
         const viewport = page.getViewport({ scale: 1.5 });
         const canvas = pdfViewerRef.current;
         const context = canvas.getContext("2d");

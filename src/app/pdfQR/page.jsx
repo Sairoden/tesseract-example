@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import { PDFDocument } from "pdf-lib";
@@ -225,6 +225,10 @@ export default function TesseractComponent() {
   //   });
   // };
 
+  useEffect(() => {
+    console.log(text);
+  }, [text]);
+
   return (
     <>
       <h1 className="title">Hello World</h1>
@@ -246,15 +250,15 @@ export default function TesseractComponent() {
               className="pdfObject"
               frameborder="0"
               allowfullscreen
-            />
-
-            <embed
-              src={`${pdfUrl}#view=Fit&toolbar=0&statusbar=0&messages=0&navpanes=0&scrollbar=0`}
-              type="application/pdf"
-              width="100%"
-              height="600"
-              frameBorder="0"
-            />
+            >
+              <embed
+                src={`${pdfUrl}#view=Fit&toolbar=0&statusbar=0&messages=0&navpanes=0&scrollbar=0`}
+                type="application/pdf"
+                width="100%"
+                height="600"
+                frameBorder="0"
+              />
+            </object>
 
             <iframe
               src={`${pdfUrl}#view=Fit&toolbar=0&statusbar=0&messages=0&navpanes=0&scrollbar=0`}

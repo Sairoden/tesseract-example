@@ -24,7 +24,7 @@ export default function TesseractComponent() {
   const pdfViewerRef = useRef(null);
   const [dataUrl, setDataUrl] = useState(""); // data url of qr json
 
-  const handleFileChange = (event) => {
+  const handleFileChange = event => {
     const inputfile = event.target.files[0];
     setFile(inputfile);
   };
@@ -106,7 +106,7 @@ export default function TesseractComponent() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then((res) =>
+        const pngImageBytes = await fetch(pngUrl).then(res =>
           res.arrayBuffer()
         );
 
@@ -175,31 +175,13 @@ export default function TesseractComponent() {
         // Convert Uint8Array to Blob
         const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-        // Download feature
-        // Create a URL for the Blob
-        // const url = URL.createObjectURL(blob);
-
-        // Create a temporary link element
-        // const link = document.createElement("a");
-        // link.href = url;
-        // link.download = "pdf-lib_modification_example.pdf";
-
-        // // Append the link to the body
-        // document.body.appendChild(link);
-
-        // // Trigger the download
-        // link.click();
-
-        // // Clean up
-        // URL.revokeObjectURL(url);
-        // document.body.removeChild(link);
-        // End of download feature
-
         // PDF Viewer
         setPdfViewer(blob);
         setPdfUrl(URL.createObjectURL(blob));
 
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        console.log(pdfBuffer);
+
+        const pdf = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
         const numPages = pdf.numPages;
 
         const texts = [];
@@ -222,7 +204,7 @@ export default function TesseractComponent() {
           const imageDataUrl = canvas.toDataURL();
 
           const result = await Tesseract.recognize(imageDataUrl, "eng", {
-            logger: (m) => console.log(m),
+            logger: m => console.log(m),
           });
 
           texts.push(result.data.text);
@@ -238,12 +220,12 @@ export default function TesseractComponent() {
     });
   };
 
-  const setPdfViewer = (file) => {
+  const setPdfViewer = file => {
     if (!file) return;
 
     const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
-    loadingTask.promise.then((pdf) => {
-      pdf.getPage(1).then((page) => {
+    loadingTask.promise.then(pdf => {
+      pdf.getPage(1).then(page => {
         const viewport = page.getViewport({ scale: 1.5 });
         const canvas = pdfViewerRef.current;
         const context = canvas.getContext("2d");

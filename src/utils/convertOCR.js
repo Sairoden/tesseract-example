@@ -19,7 +19,8 @@ export const convertOCR = text => {
 
   // LICENSEE
   const licenseeMatch = cleanedText.match(
-    /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([^\s]+)/i
+    // /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([^\s]+)/i
+    /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([A-Za-z\s\/\-]+?)(?=\s{2,}|\n|$)/i
   );
 
   // Add data from OCR

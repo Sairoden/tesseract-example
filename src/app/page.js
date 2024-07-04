@@ -11,7 +11,7 @@ import { PDFDocument } from "pdf-lib";
 // UTILS
 import { convertOCR } from "../utils";
 
-export default function Home() {
+export default function HomePage() {
   const [file, setFile] = useState(null);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
