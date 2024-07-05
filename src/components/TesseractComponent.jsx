@@ -22,7 +22,7 @@ export default function TesseractComponent() {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const pdfViewerRef = useRef(null);
-  const [dataUrl, setDataUrl] = useState(""); // data url of qr json
+  const [dataUrl, setDataUrl] = useState("");
 
   const handleFileChange = event => {
     const inputfile = event.target.files[0];
@@ -94,6 +94,7 @@ export default function TesseractComponent() {
       setDataUrl(dataUrl);
 
       try {
+        console.log(file);
         const pdfBuffer = await file.arrayBuffer();
 
         // Load the PDFDocument from the ArrayBuffer

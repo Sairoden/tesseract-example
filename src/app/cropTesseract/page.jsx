@@ -1,195 +1,164 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import Tesseract from "tesseract.js";
+import { createWorker } from "tesseract.js";
 import cv from "@techstark/opencv-js";
-import { PDFDocument } from "pdf-lib";
+import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export default function CropTesseractPage() {
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const canvasRef = useRef(null);
   const binarizedCanvasRef = useRef(null);
-  const imageRef = useRef(null);
+  const imageLoaded = useRef(false);
 
-  const handleFileChange = async e => {
-    const inputFile = e.target.files[0];
-    // setFile(URL.createObjectURL(inputFile));
-    setFile(inputFile);
+  const handleFileChange = e => {
+    const file = e.target.files[0];
 
     const reader = new FileReader();
+    reader.onload = function () {
+      setFile(reader.result);
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
-    reader.onload = async () => {
-      const typedArray = new Uint8Array(reader.result);
-      const pdfDoc = await PDFDocument.load(typedArray);
-      const page = pdfDoc.getPage(0); // Assuming we are only interested in the first page
+  const renderPdfToCanvas = async pdfData => {
+    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 2.0 });
 
-      // Convert the PDF page to an image
-      const imageUrl = await pageToImage(pdfDoc, page);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
 
-      handleOCR(imageUrl); // Use the generated image for OCR
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    const renderContext = {
+      canvasContext: ctx,
+      viewport: viewport,
     };
 
-    const handleOCR = async img => {
-      const worker = await Tesseract.createWorker("eng");
+    await page.render(renderContext).promise;
+
+    imageLoaded.current = true;
+  };
+
+  const handleOCR = async img => {
+    try {
+      console.log("Starting OCR process...");
+
+      const worker = await createWorker();
+
       const { data } = await worker.recognize(img);
-      setText(data.text);
-    };
 
-    const handleImageLoad = () => {
-      // -----------------------------------------------------------------------------------------
+      if (data) {
+        // console.log(data.lines);
+        console.log(data.text);
 
-      // -----------------------------------------------------------------------------------------
+        // METHOD 1: BY LINES (DEPARTMENT)
+        // const departmentTexts = data.lines
+        //   .filter(line => {
+        //     const words = line.text.toLowerCase().split(/\s+/);
+        //     return words.includes("department");
+        //   })
+        //   .map(line => line.text);
 
-      const img = imageRef.current;
+        // departmentTexts.forEach(text => console.log(text.trim()));
 
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
+        // METHOD 2: BY TEXT (DEPARTMENT/SUBJECT)
+        const departmentRegex = /^.*?Department$/im;
+        const departmentMatch = text.match(departmentRegex);
+        console.log(departmentMatch);
+        // const departmentName = departmentMatch ? departmentMatch[0] : null;
 
-      // Set canvas dimensions to match the image
-      canvas.width = img.width;
-      canvas.height = img.height;
+        // console.log(departmentName);
 
-      ctx.drawImage(img, 0, 0);
+        // const subjectRegex = /SUBJECT:\s*(.*)/i;
+        // const subjectMatch = text.match(subjectRegex);
+        // console.log(subjectMatch);
+        // // const subjectName = subjectMatch ? subjectMatch[0] : null;
 
-      const cropX = 0;
-      const cropY = 0;
-      const cropWidth = canvas.width;
-      const cropHeight = canvas.height * 0.4;
+        console.log("OCR process completed.");
+        setText(data.text);
+      }
+    } catch (error) {
+      console.error("Error during OCR process:", error);
+    }
+  };
 
-      // const cropX = 0;
-      // const cropY = 0;
-      // const cropWidth = canvas.width;
-      // const cropHeight = canvas.height;
+  const preprocessAndRunOCR = () => {
+    if (!imageLoaded.current) {
+      alert("Please load an image first.");
+      return;
+    }
 
-      // const cropX = 800;
-      // const cropY = 100;
-      // const cropWidth = 400;
-      // const cropHeight = 140;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
 
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
+    const cropX = 0;
+    const cropY = 0;
+    const cropWidth = canvas.width;
+    // const cropHeight = canvas.height * 0.4;
+    const cropHeight = canvas.height;
 
-      // Get the cropped image data
-      const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
 
-      // Create a temporary canvas to store the cropped image
-      const tempCanvas = document.createElement("canvas");
-      tempCanvas.width = cropWidth;
-      tempCanvas.height = cropHeight;
-      const tempCtx = tempCanvas.getContext("2d");
-      tempCtx.putImageData(imageData, 0, 0);
+    const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
 
-      let src = cv.imread(tempCanvas);
-      let dst = new cv.Mat();
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = cropWidth;
+    tempCanvas.height = cropHeight;
+    const tempCtx = tempCanvas.getContext("2d");
+    tempCtx.putImageData(imageData, 0, 0);
 
-      let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, 1));
-      // cv.GaussianBlur(src, dst, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-      // cv.cvtColor(src, dst, cv.COLOR_BGR2GRAY, 0);
+    let src = cv.imread(tempCanvas);
+    let dst = new cv.Mat();
 
-      // cv.resize(src, dst, dst.size(), 3, 3, cv.INTER_LINEAR);
-      cv.resize(src, dst, dst.size(), 2, 2, cv.INTER_LINEAR);
+    let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, 1));
+    cv.resize(src, dst, dst.size(), 2, 2, cv.INTER_LINEAR);
+    cv.dilate(src, dst, kernel, new cv.Point(-1, -1));
 
-      cv.dilate(src, dst, kernel, new cv.Point(-1, -1));
+    // cv.GaussianBlur(src, dst, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+    cv.cvtColor(src, dst, cv.COLOR_BGR2GRAY, 0);
 
-      let low = new cv.Mat(src.rows, src.cols, src.type(), [0, 0, 0, 0]);
-      let high = new cv.Mat(src.rows, src.cols, src.type(), [1, 1, 1, 255]);
+    // cv.threshold(src, dst, 50, 100, cv.THRESH_BINARY);
 
-      // cv.threshold(src, dst, 50, 200, cv.THRESH_BINARY);
-      cv.inRange(src, low, high, dst);
+    let low = new cv.Mat(src.rows, src.cols, src.type(), [0, 0, 0, 0]);
+    let high = new cv.Mat(src.rows, src.cols, src.type(), [150, 150, 150, 255]);
 
-      cv.imshow(binarizedCanvasRef.current, dst);
+    // cv.inRange(src, low, high, dst);
 
-      // Convert the binarized image back to a data URL
-      const binarizedDataUrl = binarizedCanvasRef.current.toDataURL();
+    cv.imshow(binarizedCanvasRef.current, dst);
 
-      // Run Tesseract.js on the binarized image
-      handleOCR(binarizedDataUrl);
+    const binarizedDataUrl = binarizedCanvasRef.current.toDataURL();
+    handleOCR(binarizedDataUrl);
 
-      // Clean up
-      src.delete();
-      dst.delete();
-      low.delete();
-      high.delete();
-    };
+    src.delete();
+    dst.delete();
+    low.delete();
+    high.delete();
+  };
 
-    // useEffect(() => {
-    //   if (text) {
-    //     const formNoMatch = text.match(/GLDD\s*[-–]\s*\d+/i);
+  useEffect(() => {
+    if (file) {
+      renderPdfToCanvas(file);
+    }
+  }, [file]);
 
-    //     const newText = {
-    //       formNo: formNoMatch
-    //         ? formNoMatch[0].trim().replace(/\s*[-–]\s*/g, "-")
-    //         : null,
-    //     };
-
-    //     const documentList = {
-    //       "GLDD-960": {
-    //         title:
-    //           "INSTALLATION AND/OR OPERATIONOF GAMING TABLES NOTIFICATION FORM",
-    //         sections: [
-    //           "SECTION A: OPERATION OF GAMING TABLES",
-    //           "SECTION B: SUBMISSION INSTRUCTIONS",
-    //           "SECTION C: ACKNOWLEDGMENT OF NOTIFICATION",
-    //         ],
-    //       },
-    //       "GLDD-964": {
-    //         title: "NEW GAME REQUEST AND APPROVAL FORM",
-    //         sections: [
-    //           "SECTION A: PROPOSED NEW GAME",
-    //           "SECTION B: SUBMISSION INSTRUCTION",
-    //           "SECTION C: ACTION TAKEN",
-    //         ],
-    //       },
-    //     };
-
-    //     const newText2 = {
-    //       ...newText,
-    //       title: documentList[newText.formNo]?.title || null,
-    //       sections: documentList[newText.formNo]?.sections || null,
-    //     };
-
-    //     // console.log(newText2);
-    //   }
-    // }, [text]);
-
-    return (
+  return (
+    <div>
+      <input type="file" onChange={handleFileChange} accept="application/pdf" />
+      <button onClick={preprocessAndRunOCR}>Run OCR</button>
       <div>
-        <input type="file" onChange={handleFileChange} />
-
-        <div>
-          <h3>Recognized Text:</h3>
-          <pre>{text}</pre>
-        </div>
-
-        {pdfPages.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              flexDirection: "column",
-              justifyContent: "center",
-            }}
-          >
-            {pdfPages.map((page, index) => (
-              <div key={index}>
-                <h3>Page {index + 1}:</h3>
-                <img
-                  ref={imageRef}
-                  src={page}
-                  alt={`Page ${index + 1}`}
-                  onLoad={handleImageLoad}
-                  style={{ display: "none" }}
-                />
-                <canvas ref={canvasRef}></canvas>
-              </div>
-            ))}
-            <canvas ref={binarizedCanvasRef}></canvas>
-          </div>
-        )}
-
-        {/* {file && (
+        <h3>Recognized Text:</h3>
+        <pre>{text}</pre>
+      </div>
+      {file && (
         <div
           style={{
             display: "flex",
@@ -200,17 +169,9 @@ export default function CropTesseractPage() {
         >
           <h3>Binarized Image:</h3>
           <canvas ref={binarizedCanvasRef}></canvas>
-          <img
-            ref={imageRef}
-            src={file}
-            alt="Selected"
-            onLoad={handleImageLoad}
-            style={{ display: "none" }}
-          />
           <canvas ref={canvasRef}></canvas>
         </div>
-      )} */}
-      </div>
-    );
-  };
+      )}
+    </div>
+  );
 }

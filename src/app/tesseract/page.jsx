@@ -92,8 +92,8 @@ export default function TesseractImage() {
             alt="Selected"
             ref={imageViewerRef}
             // style={{ maxWidth: "100%", height: "auto" }}
-            width={200}
-            height={200}
+            width="100%"
+            height={600}
           />
         </div>
       )}
