@@ -4,18 +4,12 @@
 import { useState, useRef, useEffect } from "react";
 
 // LIBRARIES
-import * as pdfjsLib from "pdfjs-dist/build/pdf";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import QRCode from "qrcode";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import pdfToText from "react-pdftotext";
 
 // UTILS
 import { convertOCR } from "../../utils";
-import "./page.css";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-// pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export default function DocumentOCR() {
   const [file, setFile] = useState(null);
@@ -56,7 +50,7 @@ export default function DocumentOCR() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then(res =>
+        const pngImageBytes = await fetch(pngUrl).then((res) =>
           res.arrayBuffer()
         );
 
@@ -118,12 +112,8 @@ export default function DocumentOCR() {
         // Serialize the PDFDocument to bytes (a Uint8Array)
         const pdfBytes = await pdfDoc.save();
 
-        console.log(pdfBytes);
-
         // Convert Uint8Array to Blob
         const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
-
-        console.log(blob);
 
         // PDF Viewer
         setPdfViewer(blob, pageNumber);
@@ -184,7 +174,6 @@ export default function DocumentOCR() {
 
     const page = await pdf.getPage(pageNum);
 
-    var container = document.getElementById("canvasContainer");
     const scale = 1.5;
     const viewport = page.getViewport({ scale: scale });
     // Support HiDPI-screens.
@@ -237,7 +226,7 @@ export default function DocumentOCR() {
   };
 
   return (
-    <div style={{ margin: "auto", width: "75%" }}>
+    <div style={{ margin: "auto", width: "70%" }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <input
           type="file"
@@ -273,18 +262,18 @@ export default function DocumentOCR() {
             </div>
           </div>
           <h2>Document Preview with QR Code</h2>
-          <div id="canvasContainer">
-            <canvas
-              ref={pdfViewerRef}
-              // width="300px"
-              // height="150px"
-              style={{
-                width: "100%",
-                height: "100%",
-                border: "black 2px solid",
-              }}
-            />
-          </div>
+
+          <canvas
+            ref={pdfViewerRef}
+            // width="300px"
+            // height="150px"
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "black 2px solid",
+            }}
+          />
+
           <button onClick={handlePreviousClick}>Previous</button>
           <button onClick={handleNextClick}>Next</button>
         </div>
