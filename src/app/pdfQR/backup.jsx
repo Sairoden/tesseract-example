@@ -174,7 +174,6 @@ export default function DocumentOCR() {
 
     const page = await pdf.getPage(pageNum);
 
-    var container = document.getElementById("canvasContainer");
     const scale = 1.5;
     const viewport = page.getViewport({ scale: scale });
     // Support HiDPI-screens.
@@ -227,7 +226,7 @@ export default function DocumentOCR() {
   };
 
   return (
-    <div style={{ margin: "auto", width: "75%" }}>
+    <div style={{ margin: "auto", width: "70%" }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <input
           type="file"
@@ -263,18 +262,18 @@ export default function DocumentOCR() {
             </div>
           </div>
           <h2>Document Preview with QR Code</h2>
-          <div id="canvasContainer">
-            <canvas
-              ref={pdfViewerRef}
-              // width="300px"
-              // height="150px"
-              style={{
-                width: "100%",
-                height: "100%",
-                border: "black 2px solid",
-              }}
-            />
-          </div>
+
+          <canvas
+            ref={pdfViewerRef}
+            // width="300px"
+            // height="150px"
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "black 2px solid",
+            }}
+          />
+
           <button onClick={handlePreviousClick}>Previous</button>
           <button onClick={handleNextClick}>Next</button>
         </div>
