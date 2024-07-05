@@ -4,12 +4,18 @@
 import { useState, useRef, useEffect } from "react";
 
 // LIBRARIES
+import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import QRCode from "qrcode";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import pdfToText from "react-pdftotext";
 
 // UTILS
 import { convertOCR } from "../../utils";
+import "./page.css";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export default function DocumentOCR() {
   const [file, setFile] = useState(null);
@@ -50,7 +56,7 @@ export default function DocumentOCR() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then((res) =>
+        const pngImageBytes = await fetch(pngUrl).then(res =>
           res.arrayBuffer()
         );
 
@@ -112,8 +118,12 @@ export default function DocumentOCR() {
         // Serialize the PDFDocument to bytes (a Uint8Array)
         const pdfBytes = await pdfDoc.save();
 
+        console.log(pdfBytes);
+
         // Convert Uint8Array to Blob
         const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
+
+        console.log(blob);
 
         // PDF Viewer
         setPdfViewer(blob, pageNumber);

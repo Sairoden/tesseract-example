@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import Tesseract from "tesseract.js";
 import cv from "@techstark/opencv-js";
+import { PDFDocument } from "pdf-lib";
 
 export default function CropTesseractPage() {
   const [text, setText] = useState("");
@@ -11,141 +12,184 @@ export default function CropTesseractPage() {
   const binarizedCanvasRef = useRef(null);
   const imageRef = useRef(null);
 
-  const handleFileChange = e => {
-    const file = e.target.files[0];
-    setFile(URL.createObjectURL(file));
-  };
+  const handleFileChange = async e => {
+    const inputFile = e.target.files[0];
+    // setFile(URL.createObjectURL(inputFile));
+    setFile(inputFile);
 
-  const handleOCR = async img => {
-    const worker = await Tesseract.createWorker("eng");
-    const { data } = await worker.recognize(img);
-    setText(data.text);
-  };
+    const reader = new FileReader();
 
-  const handleImageLoad = () => {
-    const img = imageRef.current;
+    reader.onload = async () => {
+      const typedArray = new Uint8Array(reader.result);
+      const pdfDoc = await PDFDocument.load(typedArray);
+      const page = pdfDoc.getPage(0); // Assuming we are only interested in the first page
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+      // Convert the PDF page to an image
+      const imageUrl = await pageToImage(pdfDoc, page);
 
-    // Set canvas dimensions to match the image
-    canvas.width = img.width;
-    canvas.height = img.height;
+      handleOCR(imageUrl); // Use the generated image for OCR
+    };
 
-    ctx.drawImage(img, 0, 0);
+    const handleOCR = async img => {
+      const worker = await Tesseract.createWorker("eng");
+      const { data } = await worker.recognize(img);
+      setText(data.text);
+    };
 
-    const cropX = 0;
-    const cropY = 0;
-    const cropWidth = canvas.width;
-    const cropHeight = canvas.height * 0.4;
+    const handleImageLoad = () => {
+      // -----------------------------------------------------------------------------------------
 
-    // const cropX = 0;
-    // const cropY = 0;
-    // const cropWidth = canvas.width;
-    // const cropHeight = canvas.height;
+      // -----------------------------------------------------------------------------------------
 
-    // const cropX = 800;
-    // const cropY = 100;
-    // const cropWidth = 400;
-    // const cropHeight = 140;
+      const img = imageRef.current;
 
-    ctx.strokeStyle = "red";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
 
-    // Get the cropped image data
-    const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
+      // Set canvas dimensions to match the image
+      canvas.width = img.width;
+      canvas.height = img.height;
 
-    // Create a temporary canvas to store the cropped image
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = cropWidth;
-    tempCanvas.height = cropHeight;
-    const tempCtx = tempCanvas.getContext("2d");
-    tempCtx.putImageData(imageData, 0, 0);
+      ctx.drawImage(img, 0, 0);
 
-    let src = cv.imread(tempCanvas);
-    let dst = new cv.Mat();
+      const cropX = 0;
+      const cropY = 0;
+      const cropWidth = canvas.width;
+      const cropHeight = canvas.height * 0.4;
 
-    let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, 1));
-    // cv.GaussianBlur(src, dst, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-    // cv.cvtColor(src, dst, cv.COLOR_BGR2GRAY, 0);
+      // const cropX = 0;
+      // const cropY = 0;
+      // const cropWidth = canvas.width;
+      // const cropHeight = canvas.height;
 
-    // cv.resize(src, dst, dst.size(), 3, 3, cv.INTER_LINEAR);
-    cv.resize(src, dst, dst.size(), 2, 2, cv.INTER_LINEAR);
+      // const cropX = 800;
+      // const cropY = 100;
+      // const cropWidth = 400;
+      // const cropHeight = 140;
 
-    cv.dilate(src, dst, kernel, new cv.Point(-1, -1));
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
 
-    let low = new cv.Mat(src.rows, src.cols, src.type(), [0, 0, 0, 0]);
-    let high = new cv.Mat(src.rows, src.cols, src.type(), [1, 1, 1, 255]);
+      // Get the cropped image data
+      const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
 
-    // cv.threshold(src, dst, 50, 200, cv.THRESH_BINARY);
-    cv.inRange(src, low, high, dst);
+      // Create a temporary canvas to store the cropped image
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = cropWidth;
+      tempCanvas.height = cropHeight;
+      const tempCtx = tempCanvas.getContext("2d");
+      tempCtx.putImageData(imageData, 0, 0);
 
-    cv.imshow(binarizedCanvasRef.current, dst);
+      let src = cv.imread(tempCanvas);
+      let dst = new cv.Mat();
 
-    // Convert the binarized image back to a data URL
-    const binarizedDataUrl = binarizedCanvasRef.current.toDataURL();
+      let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, 1));
+      // cv.GaussianBlur(src, dst, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+      // cv.cvtColor(src, dst, cv.COLOR_BGR2GRAY, 0);
 
-    // Run Tesseract.js on the binarized image
-    handleOCR(binarizedDataUrl);
+      // cv.resize(src, dst, dst.size(), 3, 3, cv.INTER_LINEAR);
+      cv.resize(src, dst, dst.size(), 2, 2, cv.INTER_LINEAR);
 
-    // Clean up
-    src.delete();
-    dst.delete();
-    low.delete();
-    high.delete();
-  };
+      cv.dilate(src, dst, kernel, new cv.Point(-1, -1));
 
-  useEffect(() => {
-    if (text) {
-      const formNoMatch = text.match(/GLDD\s*[-–]\s*\d+/i);
+      let low = new cv.Mat(src.rows, src.cols, src.type(), [0, 0, 0, 0]);
+      let high = new cv.Mat(src.rows, src.cols, src.type(), [1, 1, 1, 255]);
 
-      const newText = {
-        formNo: formNoMatch
-          ? formNoMatch[0].trim().replace(/\s*[-–]\s*/g, "-")
-          : null,
-      };
+      // cv.threshold(src, dst, 50, 200, cv.THRESH_BINARY);
+      cv.inRange(src, low, high, dst);
 
-      const documentList = {
-        "GLDD-960": {
-          title:
-            "INSTALLATION AND/OR OPERATIONOF GAMING TABLES NOTIFICATION FORM",
-          sections: [
-            "SECTION A: OPERATION OF GAMING TABLES",
-            "SECTION B: SUBMISSION INSTRUCTIONS",
-            "SECTION C: ACKNOWLEDGMENT OF NOTIFICATION",
-          ],
-        },
-        "GLDD-964": {
-          title: "NEW GAME REQUEST AND APPROVAL FORM",
-          sections: [
-            "SECTION A: PROPOSED NEW GAME",
-            "SECTION B: SUBMISSION INSTRUCTION",
-            "SECTION C: ACTION TAKEN",
-          ],
-        },
-      };
+      cv.imshow(binarizedCanvasRef.current, dst);
 
-      const newText2 = {
-        ...newText,
-        title: documentList[newText.formNo]?.title || null,
-        sections: documentList[newText.formNo]?.sections || null,
-      };
+      // Convert the binarized image back to a data URL
+      const binarizedDataUrl = binarizedCanvasRef.current.toDataURL();
 
-      // console.log(newText2);
-    }
-  }, [text]);
+      // Run Tesseract.js on the binarized image
+      handleOCR(binarizedDataUrl);
 
-  return (
-    <div>
-      <input type="file" onChange={handleFileChange} />
+      // Clean up
+      src.delete();
+      dst.delete();
+      low.delete();
+      high.delete();
+    };
 
+    // useEffect(() => {
+    //   if (text) {
+    //     const formNoMatch = text.match(/GLDD\s*[-–]\s*\d+/i);
+
+    //     const newText = {
+    //       formNo: formNoMatch
+    //         ? formNoMatch[0].trim().replace(/\s*[-–]\s*/g, "-")
+    //         : null,
+    //     };
+
+    //     const documentList = {
+    //       "GLDD-960": {
+    //         title:
+    //           "INSTALLATION AND/OR OPERATIONOF GAMING TABLES NOTIFICATION FORM",
+    //         sections: [
+    //           "SECTION A: OPERATION OF GAMING TABLES",
+    //           "SECTION B: SUBMISSION INSTRUCTIONS",
+    //           "SECTION C: ACKNOWLEDGMENT OF NOTIFICATION",
+    //         ],
+    //       },
+    //       "GLDD-964": {
+    //         title: "NEW GAME REQUEST AND APPROVAL FORM",
+    //         sections: [
+    //           "SECTION A: PROPOSED NEW GAME",
+    //           "SECTION B: SUBMISSION INSTRUCTION",
+    //           "SECTION C: ACTION TAKEN",
+    //         ],
+    //       },
+    //     };
+
+    //     const newText2 = {
+    //       ...newText,
+    //       title: documentList[newText.formNo]?.title || null,
+    //       sections: documentList[newText.formNo]?.sections || null,
+    //     };
+
+    //     // console.log(newText2);
+    //   }
+    // }, [text]);
+
+    return (
       <div>
-        <h3>Recognized Text:</h3>
-        <pre>{text}</pre>
-      </div>
+        <input type="file" onChange={handleFileChange} />
 
-      {file && (
+        <div>
+          <h3>Recognized Text:</h3>
+          <pre>{text}</pre>
+        </div>
+
+        {pdfPages.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+          >
+            {pdfPages.map((page, index) => (
+              <div key={index}>
+                <h3>Page {index + 1}:</h3>
+                <img
+                  ref={imageRef}
+                  src={page}
+                  alt={`Page ${index + 1}`}
+                  onLoad={handleImageLoad}
+                  style={{ display: "none" }}
+                />
+                <canvas ref={canvasRef}></canvas>
+              </div>
+            ))}
+            <canvas ref={binarizedCanvasRef}></canvas>
+          </div>
+        )}
+
+        {/* {file && (
         <div
           style={{
             display: "flex",
@@ -165,7 +209,8 @@ export default function CropTesseractPage() {
           />
           <canvas ref={canvasRef}></canvas>
         </div>
-      )}
-    </div>
-  );
+      )} */}
+      </div>
+    );
+  };
 }
