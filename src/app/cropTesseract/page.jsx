@@ -6,7 +6,9 @@ import cv from "@techstark/opencv-js";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  pdfjsWorker ||
+  `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export default function CropTesseractPage() {
   const [text, setText] = useState("");
@@ -55,9 +57,6 @@ export default function CropTesseractPage() {
       const { data } = await worker.recognize(img);
 
       if (data) {
-        // console.log(data.lines);
-        console.log(data.text);
-
         // METHOD 1: BY LINES (DEPARTMENT)
         // const departmentTexts = data.lines
         //   .filter(line => {
@@ -69,17 +68,47 @@ export default function CropTesseractPage() {
         // departmentTexts.forEach(text => console.log(text.trim()));
 
         // METHOD 2: BY TEXT (DEPARTMENT/SUBJECT)
-        const departmentRegex = /^.*?Department$/im;
-        const departmentMatch = text.match(departmentRegex);
-        console.log(departmentMatch);
-        // const departmentName = departmentMatch ? departmentMatch[0] : null;
+        function extractDepartment(text) {
+          const departmentRegex = /^.*?Department$/im;
+          const departmentMatch = text.match(departmentRegex);
+          return departmentMatch ? departmentMatch[0] : null;
+        }
 
-        // console.log(departmentName);
+        function extractSubject(text) {
+          // Replace double newlines with a single space
+          text = text.replace(/\n\n/g, " ");
 
-        // const subjectRegex = /SUBJECT:\s*(.*)/i;
-        // const subjectMatch = text.match(subjectRegex);
-        // console.log(subjectMatch);
-        // // const subjectName = subjectMatch ? subjectMatch[0] : null;
+          // Split the modified text into lines by single newlines
+          const lines = text.split("\n");
+          let subjectLine = "";
+          let subjectStarted = false;
+
+          for (let line of lines) {
+            line = line.trim();
+            if (subjectStarted) {
+              // Stop if an empty line, another header, or a sentence-like line is encountered
+              if (
+                line === "" ||
+                /^[A-Z ]+ :/.test(line) ||
+                /^[A-Z]/.test(line)
+              ) {
+                break;
+              } else {
+                subjectLine += " " + line;
+              }
+            } else if (line.startsWith("SUBJECT :")) {
+              subjectStarted = true;
+              subjectLine = line.replace("SUBJECT :", "").trim();
+            }
+          }
+
+          return subjectLine.trim();
+        }
+
+        const departmentName = extractDepartment(data.text);
+        const subjectName = extractSubject(data.text);
+
+        console.log(departmentName, subjectName);
 
         console.log("OCR process completed.");
         setText(data.text);

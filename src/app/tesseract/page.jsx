@@ -1,103 +1,209 @@
 "use client";
 
-import { useState, useRef } from "react";
-import Tesseract from "tesseract.js";
-import Image from "next/image";
-// import sharp from "sharp";
+import { useRef, useState, useEffect } from "react";
+import { createWorker } from "tesseract.js";
+import cv from "@techstark/opencv-js";
+import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 
-export default function TesseractImage() {
-  const [file, setFile] = useState(null);
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  pdfjsWorker ||
+  `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+export default function Tesseract() {
   const [text, setText] = useState("");
-  const [imageUrl, setImageUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const imageViewerRef = useRef(null);
-  const [croppedImage, setCroppedImage] = useState(null);
+  const [file, setFile] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const canvasRef = useRef(null);
+  const binarizedCanvasRef = useRef(null);
+  const imageLoaded = useRef(false);
 
-  const handleFileChange = event => {
-    const selectedFile = event.target.files[0];
-    setFile(selectedFile);
-    setImageUrl(URL.createObjectURL(selectedFile));
+  const handleFileChange = e => {
+    const file = e.target.files[0];
 
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-
-          const cropHeight = img.height / 2; // Adjust this to crop more or less from the top
-          const cropWidth = img.width;
-          const dx = 0;
-          const dy = 0;
-
-          canvas.width = cropWidth;
-          canvas.height = cropHeight;
-          ctx.drawImage(
-            img,
-            dx,
-            dy,
-            cropWidth,
-            cropHeight,
-            0,
-            0,
-            cropWidth,
-            cropHeight
-          );
-
-          canvas.toBlob(blob => {
-            const url = URL.createObjectURL(blob);
-            setCroppedImage(url);
-          }, "image/jpeg");
-        };
-        img.src = e.target.result;
-      };
-
-      reader.readAsDataURL(file);
-    }
+    const reader = new FileReader();
+    reader.onload = function () {
+      setFile(reader.result);
+    };
+    reader.readAsArrayBuffer(file);
   };
 
-  const handleFileRecognition = async () => {
-    if (!file) return;
+  const renderPdfToCanvas = async pdfData => {
+    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 2.0 });
 
-    // if (croppedImage) {
-    setLoading(true);
-    setText("");
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
 
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    const renderContext = {
+      canvasContext: ctx,
+      viewport: viewport,
+    };
+
+    await page.render(renderContext).promise;
+
+    imageLoaded.current = true;
+  };
+
+  const handleOCR = async img => {
     try {
-      const result = await Tesseract.recognize(imageUrl, "eng", {
-        logger: m => console.log(m),
-      });
+      setIsLoading(true);
 
-      setText(result.data.text);
-    } catch (err) {
-      console.error(err);
-      setText("Error processing the file.");
-    } finally {
-      setLoading(false);
+      const worker = await createWorker();
+
+      const { data } = await worker.recognize(img);
+
+      if (data) {
+        function extractOCR(text) {
+          // DEPARTMENT
+          const departmentRegex = /^.*?Department$/im;
+          const departmentMatch = text.match(departmentRegex);
+          const departmentName = departmentMatch ? departmentMatch[0] : null;
+          const departmentType = departmentName
+            .split(" ")
+            .map(word => word[0])
+            .join("")
+            .toUpperCase();
+
+          // SUBJECT
+          text = text.replace(/\n\n/g, " ");
+          const lines = text.split("\n");
+          let subjectLine = "";
+          let subjectStarted = false;
+
+          for (let line of lines) {
+            line = line.trim();
+            if (subjectStarted) {
+              // Stop if an empty line, another header, or a sentence-like line is encountered
+              if (
+                line === "" ||
+                /^[A-Z ]+ :/.test(line) ||
+                /^[A-Z]/.test(line)
+              ) {
+                break;
+              } else {
+                subjectLine += " " + line;
+              }
+            } else if (line.startsWith("SUBJECT :")) {
+              subjectStarted = true;
+              subjectLine = line.replace("SUBJECT :", "").trim();
+            }
+          }
+
+          const subjectName = subjectLine.trim();
+
+          return {
+            departmentName,
+            departmentType,
+            subjectName,
+          };
+        }
+
+        const { departmentName, departmentType, subjectName } = extractOCR(
+          data.text
+        );
+
+        console.log(departmentName, departmentType, subjectName);
+
+        setText(data.text);
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error during OCR process:", error);
+      setIsLoading(false);
     }
-    // }
   };
+
+  const preprocessAndRunOCR = () => {
+    if (!imageLoaded.current) {
+      alert("Please load an image first.");
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    const cropX = 0;
+    const cropY = 0;
+    const cropWidth = canvas.width;
+    // const cropHeight = canvas.height * 0.4;
+    const cropHeight = canvas.height;
+
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
+
+    const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
+
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = cropWidth;
+    tempCanvas.height = cropHeight;
+    const tempCtx = tempCanvas.getContext("2d");
+    tempCtx.putImageData(imageData, 0, 0);
+
+    let src = cv.imread(tempCanvas);
+    let dst = new cv.Mat();
+
+    let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, 1));
+    cv.resize(src, dst, dst.size(), 2, 2, cv.INTER_LINEAR);
+    cv.dilate(src, dst, kernel, new cv.Point(-1, -1));
+
+    // cv.GaussianBlur(src, dst, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+    cv.cvtColor(src, dst, cv.COLOR_BGR2GRAY, 0);
+
+    // cv.threshold(src, dst, 50, 100, cv.THRESH_BINARY);
+
+    let low = new cv.Mat(src.rows, src.cols, src.type(), [0, 0, 0, 0]);
+    let high = new cv.Mat(src.rows, src.cols, src.type(), [150, 150, 150, 255]);
+
+    // cv.inRange(src, low, high, dst);
+
+    cv.imshow(binarizedCanvasRef.current, dst);
+
+    const binarizedDataUrl = binarizedCanvasRef.current.toDataURL();
+    handleOCR(binarizedDataUrl);
+
+    src.delete();
+    dst.delete();
+    low.delete();
+    high.delete();
+  };
+
+  useEffect(() => {
+    if (file) {
+      renderPdfToCanvas(file);
+    }
+  }, [file]);
 
   return (
     <div>
-      <input type="file" onChange={handleFileChange} accept="image/*" />
-      <button onClick={handleFileRecognition} disabled={loading}>
-        {loading ? "Recognizing..." : "Recognize Text"}
+      <input type="file" onChange={handleFileChange} accept="application/pdf" />
+      <button disabled={isLoading} onClick={preprocessAndRunOCR}>
+        Run OCR
       </button>
-      {imageUrl && (
-        <div>
-          <Image
-            src={imageUrl}
-            alt="Selected"
-            ref={imageViewerRef}
-            // style={{ maxWidth: "100%", height: "auto" }}
-            width="100%"
-            height={600}
-          />
+      <div>
+        <h3>Recognized Text:</h3>
+        <pre>{isLoading ? "Loading..." : text}</pre>
+      </div>
+      {file && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <h3>Binarized Image:</h3>
+          <canvas ref={binarizedCanvasRef}></canvas>
+          <canvas ref={canvasRef}></canvas>
         </div>
       )}
-      <pre>{text}</pre>
     </div>
   );
 }
