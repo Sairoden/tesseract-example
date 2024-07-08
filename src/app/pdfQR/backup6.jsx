@@ -1,7 +1,8 @@
 "use client";
 
-// backup for 08/07/2024
-// code for scanned rotated pages
+// backup for 05/07/2024
+// code for uploaded files
+// before changing positions of text and image
 
 // REACT
 import { useState, useRef, useEffect } from "react";
@@ -10,7 +11,7 @@ import { useState, useRef, useEffect } from "react";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import QRCode from "qrcode";
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
 import pdfToText from "react-pdftotext";
 import styled from "styled-components";
 
@@ -42,6 +43,29 @@ export default function DocumentOCR() {
       .catch((error) => console.log("Failed to extract text from pdf", error));
   };
 
+  const getPageRotation = (page) => {
+    let rotation;
+
+    // Check for Rotate on the page itself
+    const isRotated = !!page.getMaybe("Rotate");
+    if (isRotated) {
+      rotation = page.index.lookup(page.get("Rotate")).number;
+    }
+
+    // Check for Rotate on each parent node
+    page.Parent.ascend((parent) => {
+      const parentIsRotated = !!parent.getMaybe("Rotate");
+      if (rotation === undefined && parentIsRotated) {
+        rotation = parent.index.lookup(parent.get("Rotate")).number;
+      }
+    }, true);
+
+    // A rotation of 0 is the default
+    if (rotation === undefined) rotation = 0;
+
+    return rotation;
+  };
+
   const handleFileRecognition = async () => {
     if (!file) return;
     setLoading(true);
@@ -64,6 +88,11 @@ export default function DocumentOCR() {
 
         // Get the first page of the document
         const pages = pdfDoc.getPages();
+        pages.forEach((page, pageIndex) => {
+          const pageRotation = page.getRotation().angle;
+          console.log(`Page ${pageIndex + 1} Rotation: `, pageRotation);
+        });
+
         const firstPage = pages[0];
 
         // Embedding of QR
@@ -136,7 +165,7 @@ export default function DocumentOCR() {
 
         // // Download feature
         // // Create a URL for the Blob
-        // const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
 
         // // Create a temporary link element
         // const link = document.createElement("a");
