@@ -45,6 +45,7 @@ export default function HomePage() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
+
         const pngImageBytes = await fetch(pngUrl).then(res =>
           res.arrayBuffer()
         );
