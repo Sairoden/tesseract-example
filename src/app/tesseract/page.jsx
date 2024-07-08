@@ -1,10 +1,19 @@
 "use client";
 
+// REACT
 import { useRef, useState, useEffect } from "react";
+
+// LIBRARIES
 import { createWorker } from "tesseract.js";
 import cv from "@techstark/opencv-js";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
+
+import QRCode from "qrcode";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+
+// UTILS
+import { extractInternalOCR } from "../../utils";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   pdfjsWorker ||
@@ -13,13 +22,28 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 export default function Tesseract() {
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
+  const [inputFile, setInputFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const canvasRef = useRef(null);
   const binarizedCanvasRef = useRef(null);
   const imageLoaded = useRef(false);
 
+  const pdfViewerRef = useRef(null);
+  const [qrImage, setQrImage] = useState(null);
+  const [ocrData, setOcrData] = useState([]);
+  const [modifiedPDF, setModifiedPDF] = useState(null);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pageNumber, setPageNumber] = useState(1);
+
+  useEffect(() => {
+    if (file) {
+      renderPdfToCanvas(file);
+    }
+  }, [file]);
+
   const handleFileChange = e => {
     const file = e.target.files[0];
+    setInputFile(file);
 
     const reader = new FileReader();
     reader.onload = function () {
@@ -49,7 +73,7 @@ export default function Tesseract() {
     imageLoaded.current = true;
   };
 
-  const handleOCR = async img => {
+  const handleTesseract = async img => {
     try {
       setIsLoading(true);
 
@@ -58,56 +82,11 @@ export default function Tesseract() {
       const { data } = await worker.recognize(img);
 
       if (data) {
-        function extractOCR(text) {
-          // DEPARTMENT
-          const departmentRegex = /^.*?Department$/im;
-          const departmentMatch = text.match(departmentRegex);
-          const departmentName = departmentMatch ? departmentMatch[0] : null;
-          const departmentType = departmentName
-            .split(" ")
-            .map(word => word[0])
-            .join("")
-            .toUpperCase();
-
-          // SUBJECT
-          text = text.replace(/\n\n/g, " ");
-          const lines = text.split("\n");
-          let subjectLine = "";
-          let subjectStarted = false;
-
-          for (let line of lines) {
-            line = line.trim();
-            if (subjectStarted) {
-              // Stop if an empty line, another header, or a sentence-like line is encountered
-              if (
-                line === "" ||
-                /^[A-Z ]+ :/.test(line) ||
-                /^[A-Z]/.test(line)
-              ) {
-                break;
-              } else {
-                subjectLine += " " + line;
-              }
-            } else if (line.startsWith("SUBJECT :")) {
-              subjectStarted = true;
-              subjectLine = line.replace("SUBJECT :", "").trim();
-            }
-          }
-
-          const subjectName = subjectLine.trim();
-
-          return {
-            departmentName,
-            departmentType,
-            subjectName,
-          };
-        }
-
-        const OCRData = extractOCR(data.text);
-
-        console.log(OCRData);
+        const OCRData = extractInternalOCR(data.text);
 
         setText(data.text);
+        setIsLoading(false);
+        return OCRData;
       }
 
       setIsLoading(false);
@@ -118,10 +97,7 @@ export default function Tesseract() {
   };
 
   const preprocessAndRunOCR = () => {
-    if (!imageLoaded.current) {
-      alert("Please load an image first.");
-      return;
-    }
+    if (!imageLoaded.current) return alert("Please load an image first.");
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -159,69 +135,307 @@ export default function Tesseract() {
     let low = new cv.Mat(src.rows, src.cols, src.type(), [0, 0, 0, 0]);
     let high = new cv.Mat(src.rows, src.cols, src.type(), [150, 150, 150, 255]);
 
-    // cv.inRange(src, low, high, dst);
+    cv.inRange(src, low, high, dst);
 
     cv.imshow(binarizedCanvasRef.current, dst);
 
     const binarizedDataUrl = binarizedCanvasRef.current.toDataURL();
-    handleOCR(binarizedDataUrl);
 
     src.delete();
     dst.delete();
     low.delete();
     high.delete();
+
+    return binarizedDataUrl;
+  };
+
+  const handleOCR = async () => {
+    if (!file) return;
+
+    const binarizedDataUrl = preprocessAndRunOCR();
+    const OCRData = await handleTesseract(binarizedDataUrl);
+
+    setOcrData(OCRData);
+    console.log(OCRData);
+
+    // Generate QR png
+    QRCode.toDataURL(OCRData, { width: 300 }, async (err, dataUrl) => {
+      if (err) {
+        console.log(err);
+        return;
+      }
+
+      const pdfBuffer = await inputFile.arrayBuffer();
+
+      // Load the PDFDocument from the ArrayBuffer
+      const pdfDoc = await PDFDocument.load(pdfBuffer);
+
+      // Get the first page of the document
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+
+      // Embedding of QR
+      // Fetch the QR code image
+      const pngUrl = dataUrl;
+      const pngImageBytes = await fetch(pngUrl).then(res => res.arrayBuffer());
+
+      const pngImage = await pdfDoc.embedPng(pngImageBytes);
+      const pngDims = pngImage.scale(0.12);
+
+      setQrImage(pngUrl);
+
+      // Get the dimensions of the first page or document
+      const pageWidth = firstPage.getWidth();
+      const pageHeight = firstPage.getHeight();
+
+      // Get CST Number
+      const textValue = OCRData[1].data;
+
+      // Embed text
+      // Normal font
+      // const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      // Bold font
+      const boldHelveticaFont = await pdfDoc.embedFont(
+        StandardFonts.HelveticaBold
+      );
+
+      // Calculate the position to place the text in the upper right corner
+      const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 6);
+      const txtXMargin = 5;
+      const txtYMargin = 10;
+      const txtMargin = txtXMargin + txtYMargin;
+
+      const txtPosX = pageWidth - txtWidth - txtMargin;
+      const txtPosY = pageHeight - txtMargin;
+
+      firstPage.drawText(textValue, {
+        x: txtPosX,
+        y: txtPosY,
+        size: 6,
+        font: boldHelveticaFont,
+        color: rgb(0, 0, 0),
+      });
+
+      // Calculate the position to place the image in the lower right corner
+      const imageWidth = pngDims.width;
+      const imageHeight = pngDims.height;
+      const imageXMargin = 0;
+      const imageYMargin = 10;
+      const imageMargin = imageXMargin + imageYMargin;
+
+      const imagePosX = pageWidth - imageWidth - imageMargin;
+      const imagePosY = imageYMargin;
+
+      // Draw the image on the first page of the document
+      firstPage.drawImage(pngImage, {
+        x: imagePosX,
+        y: imagePosY,
+        width: imageWidth,
+        height: imageHeight,
+      });
+
+      // Serialize the PDFDocument to bytes (a Uint8Array)
+      const pdfBytes = await pdfDoc.save();
+
+      // Convert Uint8Array to Blob
+      const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
+
+      // // Download feature
+      // // Create a URL for the Blob
+      // const url = URL.createObjectURL(blob);
+
+      // // Create a temporary link element
+      // const link = document.createElement("a");
+      // link.href = url;
+      // link.download = "pdf-lib_modification_example.pdf";
+
+      // // // Append the link to the body
+      // document.body.appendChild(link);
+
+      // // // Trigger the download
+      // link.click();
+
+      // // // Clean up
+      // URL.revokeObjectURL(url);
+      // document.body.removeChild(link);
+      // // End of download feature
+
+      // PDF Viewer
+      setPdfViewer(blob, pageNumber);
+
+      // QR Viewer
+      setModifiedPDF(blob);
+    });
+  };
+
+  const getTotalPages = async () => {
+    if (!modifiedPDF) return;
+
+    const pdfBuffer = await modifiedPDF.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
+    const pages = pdfDoc.getPages().length;
+    setTotalPages(pages);
   };
 
   useEffect(() => {
-    if (file) {
-      renderPdfToCanvas(file);
+    getTotalPages();
+  }, [modifiedPDF]);
+
+  const setPdfViewer = async (inputFile, pageNum) => {
+    if (!inputFile || pageNum < 1 || pageNum > totalPages)
+      return console.log("Invalid page number:", pageNum);
+
+    const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(inputFile));
+    const pdf = await loadingTask.promise;
+
+    if (!pdf) return console.log("Failed to load PDF");
+
+    // Ensure pageNum is within bounds
+    if (pageNum < 1 || pageNum > totalPages)
+      return console.log("Invalid page number:", pageNum);
+
+    const page = await pdf.getPage(pageNum);
+
+    const container = document.getElementById("canvasContainer");
+    const scale = 1.5;
+    const viewport = page.getViewport({ scale: scale });
+
+    // Support HiDPI-screens.
+    const outputScale = window.devicePixelRatio || 1;
+
+    const canvas = pdfViewerRef.current;
+
+    if (!canvas) return console.log("Canvas ref not found");
+
+    const context = canvas.getContext("2d");
+    if (!context) return console.log("Failed to get 2D context from canvas");
+
+    canvas.width = Math.floor(viewport.width * outputScale);
+    canvas.height = Math.floor(viewport.height * outputScale);
+    canvas.style.width = `${Math.floor(viewport.width)}px`;
+    canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+    const transform =
+      outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null;
+
+    const renderContext = {
+      canvasContext: context,
+      transform: transform,
+      viewport: viewport,
+    };
+
+    page.render(renderContext);
+  };
+
+  const handlePreviousClick = () => {
+    if (pageNumber > 1) {
+      const newPageNumber = pageNumber - 1;
+      setPageNumber(newPageNumber);
+      setPdfViewer(modifiedPDF, newPageNumber);
     }
-  }, [file]);
+  };
+
+  const handleNextClick = () => {
+    if (pageNumber < totalPages) {
+      const newPageNumber = pageNumber + 1;
+      setPageNumber(newPageNumber);
+      setPdfViewer(modifiedPDF, newPageNumber);
+    }
+  };
 
   return (
-    <div class="flex flex-col items-center justify-center space-y-6">
-      <div class="flex items-center space-x-4">
+    <div className="flex flex-col items-center justify-center space-y-6">
+      <div className="flex items-center space-x-4">
         <input
           type="file"
-          class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           onChange={handleFileChange}
           accept="application/pdf"
         />
 
         <button
-          class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isLoading}
-          onClick={preprocessAndRunOCR}
+          onClick={handleOCR}
         >
           Run OCR
         </button>
       </div>
 
-      <div class="w-full">
-        <h3 class="text-lg font-medium mb-2">Recognized Text:</h3>
+      <div className="w-full">
+        <h3 className="text-lg font-medium mb-2">Recognized Text:</h3>
 
-        <pre class="bg-gray-100 p-4 rounded-md overflow-auto">
+        <pre className="bg-gray-100 p-4 rounded-md overflow-auto">
           {isLoading ? "Loading..." : text}
         </pre>
       </div>
 
       {file && (
-        <div class="flex items-center justify-center space-x-10">
+        <div className="flex items-center justify-center space-x-10">
           <div>
-            <h3 class="text-lg font-medium">Pre-processed Image:</h3>
+            <h3 className="text-lg font-medium">Pre-processed Image:</h3>
             <canvas
               ref={binarizedCanvasRef}
-              class="h-full w-full max-w-md border border-gray-300 rounded-md"
+              className="h-full w-full max-w-md border border-gray-300 rounded-md"
             ></canvas>
           </div>
 
           <div>
-            <h3 class="text-lg font-medium">Original Image:</h3>
+            <h3 className="text-lg font-medium">Original Image:</h3>
             <canvas
               ref={canvasRef}
-              class="h-full w-full max-w-md border border-gray-300 rounded-md"
+              className="h-full w-full max-w-md border border-gray-300 rounded-md"
             ></canvas>
           </div>
+        </div>
+      )}
+
+      {inputFile && (
+        <div style={{ border: "red 2px solid" }}>
+          <h2>Document Details</h2>
+          <div
+            style={{
+              border: "green 2px solid",
+              display: "flex",
+              width: "100%",
+              justifyContent: "space-between",
+              boxSizing: "border-box",
+            }}
+          >
+            <div style={{ border: "1px black solid", width: "75%" }}>
+              {ocrData.map((data, index) => (
+                <p key={index}>{data.data}</p>
+              ))}
+            </div>
+            <div style={{ border: "1px black solid" }}>
+              {qrImage && (
+                <img src={qrImage} width="150px" height="150px" alt="QR Code" />
+              )}
+            </div>
+          </div>
+          <h2>Document Preview with QR Code</h2>
+          <div
+            id="canvasContainer"
+            style={{
+              margin: "auto",
+              maxWidth: "100%",
+            }}
+          >
+            <canvas
+              ref={pdfViewerRef}
+              id="theCanvas"
+              // width="100%"
+              // height="0"
+              style={{
+                maxWidth: "100%",
+                // maxHeight: "auto",
+                border: "black 2px solid",
+                objectFit: "contain",
+              }}
+            />
+          </div>
+          <button onClick={handlePreviousClick}>Previous</button>
+          <button onClick={handleNextClick}>Next</button>
         </div>
       )}
     </div>

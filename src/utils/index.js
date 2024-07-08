@@ -1,1 +1,1 @@
-export { convertOCR } from "./convertOCR";
+export { extractInternalOCR, extractExternalOCR } from "./extractOCR";

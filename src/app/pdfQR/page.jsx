@@ -15,7 +15,7 @@ import pdfToText from "react-pdftotext";
 import styled from "styled-components";
 
 // UTILS
-import { convertOCR } from "../../utils";
+import { extractExternalOCR } from "../../utils";
 import "./page.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -33,20 +33,21 @@ export default function DocumentOCR() {
   const [totalPages, setTotalPages] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
 
-  const handleFileChange = (event) => {
+  const handleFileChange = event => {
     const inputfile = event.target.files[0];
     setFile(inputfile);
+    console.log(inputfile);
 
     pdfToText(inputfile)
-      .then((text) => setText(text))
-      .catch((error) => console.log("Failed to extract text from pdf", error));
+      .then(text => setText(text))
+      .catch(error => console.log("Failed to extract text from pdf", error));
   };
 
   const handleFileRecognition = async () => {
     if (!file) return;
     setLoading(true);
 
-    const OCRData = convertOCR(text);
+    const OCRData = extractExternalOCR(text);
     setOcrData(OCRData);
 
     try {
@@ -57,6 +58,7 @@ export default function DocumentOCR() {
           return;
         }
 
+        // console.log(file);
         const pdfBuffer = await file.arrayBuffer();
 
         // Load the PDFDocument from the ArrayBuffer
@@ -69,7 +71,7 @@ export default function DocumentOCR() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then((res) =>
+        const pngImageBytes = await fetch(pngUrl).then(res =>
           res.arrayBuffer()
         );
 
