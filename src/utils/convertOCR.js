@@ -1,4 +1,4 @@
-export const convertOCR = text => {
+export const convertOCR = (text) => {
   let formNo, licensee, title;
 
   let cleanedText = text.replace(/CRM FORM/g, "");
@@ -19,14 +19,12 @@ export const convertOCR = text => {
 
   // LICENSEE
   const licenseeMatch = cleanedText.match(
-    // /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([^\s]+)/i
-    /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([A-Za-z\s\/\-]+?)(?=\s{2,}|\n|$)/i
+    /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([^\s]+)/i
   );
 
   // Add data from OCR
   formNo = formNo ? formNo : null;
   licensee = licenseeMatch ? licenseeMatch[1].trim() : null;
-  // licensee = licensee.toLowerCase().includes("form") ? licensee : null;
   title = titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : null;
 
   // Data of formatted date and time
@@ -53,13 +51,16 @@ export const convertOCR = text => {
   // Data of CTS
   const dateArray = formattedDate.split("/");
   const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
-  const docType = title;
+  const sequenceNumber = "0001";
 
   // Combine data of CTS
-  const ctsNo = `${formNo}_${docType}_${splitDate}`;
+  const ctsNo = `${formNo}-${splitDate}-${sequenceNumber}`;
 
   // Data of Department
   const department = formNo?.split("-")[0] || null;
+
+  // Data of DocumentType
+  const docType = title;
 
   const OCRData = [
     { data: `Date and Time: ${formattedDateTime}\n`, mode: "byte" },

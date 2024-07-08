@@ -1,8 +1,7 @@
 "use client";
 
-// backup for 05/07/2024
-// code for uploaded files
-// before changing positions of text and image
+// backup for 08/07/2024
+// backup for embedding pdf
 
 // REACT
 import { useState, useRef, useEffect } from "react";
@@ -11,7 +10,7 @@ import { useState, useRef, useEffect } from "react";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import QRCode from "qrcode";
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
 import pdfToText from "react-pdftotext";
 import styled from "styled-components";
 
@@ -34,15 +33,6 @@ export default function DocumentOCR() {
   const [totalPages, setTotalPages] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
 
-  const handleFileChange = (event) => {
-    const inputfile = event.target.files[0];
-    setFile(inputfile);
-
-    pdfToText(inputfile)
-      .then((text) => setText(text))
-      .catch((error) => console.log("Failed to extract text from pdf", error));
-  };
-
   const handleFileRecognition = async () => {
     if (!file) return;
     setLoading(true);
@@ -63,8 +53,39 @@ export default function DocumentOCR() {
         // Load the PDFDocument from the ArrayBuffer
         const pdfDoc = await PDFDocument.load(pdfBuffer);
 
+        const newPdfDoc = await PDFDocument.create();
+
+        const embedPdfDoc = await newPdfDoc.embedPdf(pdfDoc);
+
+        // const embedPdfDocDims = embedPdfDoc.scale(1);
+
+        // const page = newPdfDoc.addPage();
+        // Iterate through each page and add to newPdfDoc
+        // embedPdfDoc.forEach((embedPage) => {
+        //   const newPage = newPdfDoc.addPage();
+        //   newPage.drawPage(embedPage);
+        // });
+
+        await Promise.all(
+          pdfDoc.getPages().map(async (page) => {
+            const embedPage = await newPdfDoc.embedPage(page);
+            const newPage = newPdfDoc.addPage();
+            newPage.drawPage(embedPage, {
+              dontFlip: false,
+            });
+            return embedPage;
+          })
+        );
+
+        //  const newDoc =
+        // page.drawPage(embedPdfDoc, {
+        //   ...embedPdfDocDims,
+        //   x: page.getWidth() / 2 - embedPdfDocDims.width / 2,
+        //   y: page.getHeight() - embedPdfDocDims.height - 150,
+        // });
+
         // Get the first page of the document
-        const pages = pdfDoc.getPages();
+        const pages = newPdfDoc.getPages();
         const firstPage = pages[0];
 
         // Embedding of QR
@@ -74,7 +95,7 @@ export default function DocumentOCR() {
           res.arrayBuffer()
         );
 
-        const pngImage = await pdfDoc.embedPng(pngImageBytes);
+        const pngImage = await newPdfDoc.embedPng(pngImageBytes);
         const pngDims = pngImage.scale(0.12);
 
         setQrImage(pngUrl);
@@ -90,7 +111,7 @@ export default function DocumentOCR() {
         // Normal font
         // const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
         // Bold font
-        const boldHelveticaFont = await pdfDoc.embedFont(
+        const boldHelveticaFont = await newPdfDoc.embedFont(
           StandardFonts.HelveticaBold
         );
 
@@ -130,34 +151,13 @@ export default function DocumentOCR() {
         });
 
         // Serialize the PDFDocument to bytes (a Uint8Array)
-        const pdfBytes = await pdfDoc.save();
+        const pdfBytes = await newPdfDoc.save();
 
         // Convert Uint8Array to Blob
         const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-        // // Download feature
-        // // Create a URL for the Blob
-        // const url = URL.createObjectURL(blob);
-
-        // // Create a temporary link element
-        // const link = document.createElement("a");
-        // link.href = url;
-        // link.download = "pdf-lib_modification_example.pdf";
-
-        // // // Append the link to the body
-        // document.body.appendChild(link);
-
-        // // // Trigger the download
-        // link.click();
-
-        // // // Clean up
-        // URL.revokeObjectURL(url);
-        // document.body.removeChild(link);
-        // // End of download feature
-
         // PDF Viewer
         setPdfViewer(blob, pageNumber);
-
         // QR Viewer
         setModifiedPDF(blob);
         setPdfUrl(URL.createObjectURL(blob));
@@ -168,6 +168,15 @@ export default function DocumentOCR() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFileChange = (event) => {
+    const inputfile = event.target.files[0];
+    setFile(inputfile);
+
+    pdfToText(inputfile)
+      .then((text) => setText(text))
+      .catch((error) => console.log("Failed to extract text from pdf", error));
   };
 
   const getTotalPages = async () => {
@@ -209,11 +218,13 @@ export default function DocumentOCR() {
     const container = document.getElementById("canvasContainer");
     const scale = 1.5;
     const viewport = page.getViewport({ scale: scale });
-
     // Support HiDPI-screens.
     const outputScale = window.devicePixelRatio || 1;
 
     const canvas = pdfViewerRef.current;
+
+    // const container = document.getElementById("canvasContainer");
+    // const canvas = pdfViewerRef.current;
 
     if (!canvas) {
       console.log("Canvas ref not found");
@@ -225,6 +236,18 @@ export default function DocumentOCR() {
       console.log("Failed to get 2D context from canvas");
       return;
     }
+
+    // const viewport = page.getViewport({ scale: 1.5 });
+    // const scale = container.clientWidth / viewport.width;
+    // const scaledViewport = page.getViewport(scale);
+
+    // canvas.height = scaledViewport.height;
+    // canvas.width = scaledViewport.width;
+
+    // const renderContext = {
+    //   canvasContext: context,
+    //   viewport: scaledViewport,
+    // };
 
     canvas.width = Math.floor(viewport.width * outputScale);
     canvas.height = Math.floor(viewport.height * outputScale);
@@ -241,6 +264,7 @@ export default function DocumentOCR() {
     };
 
     page.render(renderContext);
+    console.log("totalPages: ", totalPages);
   };
 
   const handlePreviousClick = () => {
@@ -248,6 +272,8 @@ export default function DocumentOCR() {
       const newPageNumber = pageNumber - 1;
       setPageNumber(newPageNumber);
       setPdfViewer(modifiedPDF, newPageNumber);
+      console.log("newPrev: ", newPageNumber);
+      console.log("newPrev: ", newPageNumber);
     }
   };
 
@@ -256,6 +282,7 @@ export default function DocumentOCR() {
       const newPageNumber = pageNumber + 1;
       setPageNumber(newPageNumber);
       setPdfViewer(modifiedPDF, newPageNumber);
+      console.log("newNext: ", newPageNumber);
     }
   };
 

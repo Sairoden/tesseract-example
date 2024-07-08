@@ -24,7 +24,7 @@ export default function TesseractComponent() {
   const pdfViewerRef = useRef(null);
   const [dataUrl, setDataUrl] = useState(""); // data url of qr json
 
-  const handleFileChange = event => {
+  const handleFileChange = (event) => {
     const inputfile = event.target.files[0];
     setFile(inputfile);
   };
@@ -106,7 +106,7 @@ export default function TesseractComponent() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then(res =>
+        const pngImageBytes = await fetch(pngUrl).then((res) =>
           res.arrayBuffer()
         );
 
@@ -204,7 +204,7 @@ export default function TesseractComponent() {
           const imageDataUrl = canvas.toDataURL();
 
           const result = await Tesseract.recognize(imageDataUrl, "eng", {
-            logger: m => console.log(m),
+            logger: (m) => console.log(m),
           });
 
           texts.push(result.data.text);
@@ -220,11 +220,10 @@ export default function TesseractComponent() {
     });
   };
 
-  const setPdfViewer = file => {
+  const setPdfViewer = (file) => {
     if (!file) return;
 
     const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
-<<<<<<< HEAD
     loadingTask.promise.then((pdf) => {
       pdf.getPage(1).then((page) => {
         const scale = 1.5;
@@ -233,11 +232,6 @@ export default function TesseractComponent() {
         // Support HiDPI-screens.
         const outputScale = window.devicePixelRatio || 1;
 
-=======
-    loadingTask.promise.then(pdf => {
-      pdf.getPage(1).then(page => {
-        const viewport = page.getViewport({ scale: 1.5 });
->>>>>>> db12f5208718df8e4a1a293b37915be3bea32021
         const canvas = pdfViewerRef.current;
         const context = canvas.getContext("2d");
 
