@@ -29,7 +29,6 @@ export default function Tesseract() {
   const imageLoaded = useRef(false);
 
   const pdfViewerRef = useRef(null);
-  const [pdfUrl, setPdfUrl] = useState(null);
   const [qrImage, setQrImage] = useState(null);
   const [ocrData, setOcrData] = useState([]);
   const [modifiedPDF, setModifiedPDF] = useState(null);
@@ -74,7 +73,7 @@ export default function Tesseract() {
     imageLoaded.current = true;
   };
 
-  const handleOCR = async img => {
+  const handleTesseract = async img => {
     try {
       setIsLoading(true);
 
@@ -136,7 +135,7 @@ export default function Tesseract() {
     let low = new cv.Mat(src.rows, src.cols, src.type(), [0, 0, 0, 0]);
     let high = new cv.Mat(src.rows, src.cols, src.type(), [150, 150, 150, 255]);
 
-    // cv.inRange(src, low, high, dst);
+    cv.inRange(src, low, high, dst);
 
     cv.imshow(binarizedCanvasRef.current, dst);
 
@@ -150,11 +149,11 @@ export default function Tesseract() {
     return binarizedDataUrl;
   };
 
-  const handleClick = async () => {
+  const handleOCR = async () => {
     if (!file) return;
 
     const binarizedDataUrl = preprocessAndRunOCR();
-    const OCRData = await handleOCR(binarizedDataUrl);
+    const OCRData = await handleTesseract(binarizedDataUrl);
 
     setOcrData(OCRData);
     console.log(OCRData);
@@ -166,7 +165,6 @@ export default function Tesseract() {
         return;
       }
 
-      console.log(file);
       const pdfBuffer = await inputFile.arrayBuffer();
 
       // Load the PDFDocument from the ArrayBuffer
@@ -267,7 +265,6 @@ export default function Tesseract() {
 
       // QR Viewer
       setModifiedPDF(blob);
-      setPdfUrl(URL.createObjectURL(blob));
     });
   };
 
@@ -283,27 +280,19 @@ export default function Tesseract() {
   useEffect(() => {
     getTotalPages();
   }, [modifiedPDF]);
-  // getTotalPages();
 
   const setPdfViewer = async (inputFile, pageNum) => {
-    if (!inputFile || pageNum < 1 || pageNum > totalPages) {
-      console.log("Invalid page number:", pageNum);
-      return;
-    }
+    if (!inputFile || pageNum < 1 || pageNum > totalPages)
+      return console.log("Invalid page number:", pageNum);
 
     const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(inputFile));
     const pdf = await loadingTask.promise;
 
-    if (!pdf) {
-      console.log("Failed to load PDF");
-      return;
-    }
+    if (!pdf) return console.log("Failed to load PDF");
 
     // Ensure pageNum is within bounds
-    if (pageNum < 1 || pageNum > totalPages) {
-      console.log("Invalid page number:", pageNum);
-      return;
-    }
+    if (pageNum < 1 || pageNum > totalPages)
+      return console.log("Invalid page number:", pageNum);
 
     const page = await pdf.getPage(pageNum);
 
@@ -316,16 +305,10 @@ export default function Tesseract() {
 
     const canvas = pdfViewerRef.current;
 
-    if (!canvas) {
-      console.log("Canvas ref not found");
-      return;
-    }
+    if (!canvas) return console.log("Canvas ref not found");
 
     const context = canvas.getContext("2d");
-    if (!context) {
-      console.log("Failed to get 2D context from canvas");
-      return;
-    }
+    if (!context) return console.log("Failed to get 2D context from canvas");
 
     canvas.width = Math.floor(viewport.width * outputScale);
     canvas.height = Math.floor(viewport.height * outputScale);
@@ -373,7 +356,7 @@ export default function Tesseract() {
         <button
           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isLoading}
-          onClick={handleClick}
+          onClick={handleOCR}
         >
           Run OCR
         </button>
