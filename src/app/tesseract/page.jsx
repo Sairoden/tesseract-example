@@ -10,7 +10,7 @@ import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 
 import QRCode from "qrcode";
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
 
 // UTILS
 import { extractInternalOCR } from "../../utils";
@@ -180,7 +180,7 @@ export default function Tesseract() {
       const pngImageBytes = await fetch(pngUrl).then(res => res.arrayBuffer());
 
       const pngImage = await pdfDoc.embedPng(pngImageBytes);
-      const pngDims = pngImage.scale(0.12);
+      const pngDims = pngImage.scale(0.15);
 
       setQrImage(pngUrl);
 
@@ -199,14 +199,18 @@ export default function Tesseract() {
         StandardFonts.HelveticaBold
       );
 
+      // ------------------------------------------------------------------------------------------
+
       // Calculate the position to place the text in the upper right corner
       const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 6);
       const txtXMargin = 5;
       const txtYMargin = 10;
       const txtMargin = txtXMargin + txtYMargin;
 
-      const txtPosX = pageWidth - txtWidth - txtMargin;
-      const txtPosY = pageHeight - txtMargin;
+      // const txtPosX = pageWidth - txtWidth - txtMargin;
+      // const txtPosY = pageHeight - txtMargin;
+      const txtPosX = pageWidth - txtWidth + 65;
+      const txtPosY = pageHeight - 480;
 
       firstPage.drawText(textValue, {
         x: txtPosX,
@@ -214,6 +218,7 @@ export default function Tesseract() {
         size: 6,
         font: boldHelveticaFont,
         color: rgb(0, 0, 0),
+        rotate: degrees(-90),
       });
 
       // Calculate the position to place the image in the lower right corner
@@ -223,8 +228,10 @@ export default function Tesseract() {
       const imageYMargin = 10;
       const imageMargin = imageXMargin + imageYMargin;
 
-      const imagePosX = pageWidth - imageWidth - imageMargin;
-      const imagePosY = imageYMargin;
+      // const imagePosX = pageWidth - imageWidth - imageMargin;
+      // const imagePosY = imageYMargin;
+      const imagePosX = imageWidth - imageMargin - 10;
+      const imagePosY = imageYMargin + 50;
 
       // Draw the image on the first page of the document
       firstPage.drawImage(pngImage, {
@@ -232,7 +239,10 @@ export default function Tesseract() {
         y: imagePosY,
         width: imageWidth,
         height: imageHeight,
+        rotate: degrees(-90),
       });
+
+      // ------------------------------------------------------------------------------------------
 
       // Serialize the PDFDocument to bytes (a Uint8Array)
       const pdfBytes = await pdfDoc.save();
@@ -242,22 +252,22 @@ export default function Tesseract() {
 
       // // Download feature
       // // Create a URL for the Blob
-      // const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
 
       // // Create a temporary link element
-      // const link = document.createElement("a");
-      // link.href = url;
-      // link.download = "pdf-lib_modification_example.pdf";
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "pdf-lib_modification_example.pdf";
 
       // // // Append the link to the body
-      // document.body.appendChild(link);
+      document.body.appendChild(link);
 
       // // // Trigger the download
-      // link.click();
+      link.click();
 
       // // // Clean up
-      // URL.revokeObjectURL(url);
-      // document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      document.body.removeChild(link);
       // // End of download feature
 
       // PDF Viewer
