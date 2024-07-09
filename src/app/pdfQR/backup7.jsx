@@ -1,8 +1,8 @@
 "use client";
 
-// backup for 05/07/2024
-// code for uploaded files
-// external
+// backup for 09/07/2024
+// code for scanned rotated pages
+// manual positioning
 
 // REACT
 import { useState, useRef, useEffect } from "react";
@@ -16,7 +16,7 @@ import pdfToText from "react-pdftotext";
 import styled from "styled-components";
 
 // UTILS
-import { extractExternalOCR } from "../../utils";
+import { extractInternalOCR } from "../../utils";
 import "./page.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -37,41 +37,21 @@ export default function DocumentOCR() {
   const handleFileChange = (event) => {
     const inputfile = event.target.files[0];
     setFile(inputfile);
+    console.log(inputfile);
 
     pdfToText(inputfile)
       .then((text) => setText(text))
       .catch((error) => console.log("Failed to extract text from pdf", error));
   };
 
-  const getPageRotation = (page) => {
-    let rotation;
-
-    // Check for Rotate on the page itself
-    const isRotated = !!page.getMaybe("Rotate");
-    if (isRotated) {
-      rotation = page.index.lookup(page.get("Rotate")).number;
-    }
-
-    // Check for Rotate on each parent node
-    page.Parent.ascend((parent) => {
-      const parentIsRotated = !!parent.getMaybe("Rotate");
-      if (rotation === undefined && parentIsRotated) {
-        rotation = parent.index.lookup(parent.get("Rotate")).number;
-      }
-    }, true);
-
-    // A rotation of 0 is the default
-    if (rotation === undefined) rotation = 0;
-
-    return rotation;
-  };
-
   const handleFileRecognition = async () => {
     if (!file) return;
     setLoading(true);
 
-    const OCRData = extractExternalOCR(text);
+    const OCRData = extractInternalOCR(text);
     setOcrData(OCRData);
+
+    console.log(OCRData);
 
     try {
       // Generate QR png
@@ -81,6 +61,7 @@ export default function DocumentOCR() {
           return;
         }
 
+        // console.log(file);
         const pdfBuffer = await file.arrayBuffer();
 
         // Load the PDFDocument from the ArrayBuffer
@@ -88,11 +69,6 @@ export default function DocumentOCR() {
 
         // Get the first page of the document
         const pages = pdfDoc.getPages();
-        pages.forEach((page, pageIndex) => {
-          const pageRotation = page.getRotation().angle;
-          console.log(`Page ${pageIndex + 1} Rotation: `, pageRotation);
-        });
-
         const firstPage = pages[0];
 
         // Embedding of QR
@@ -103,7 +79,7 @@ export default function DocumentOCR() {
         );
 
         const pngImage = await pdfDoc.embedPng(pngImageBytes);
-        const pngDims = pngImage.scale(0.12);
+        const pngDims = pngImage.scale(0.15);
 
         setQrImage(pngUrl);
 
@@ -128,8 +104,10 @@ export default function DocumentOCR() {
         const txtYMargin = 10;
         const txtMargin = txtXMargin + txtYMargin;
 
-        const txtPosX = pageWidth - txtWidth - txtMargin;
-        const txtPosY = pageHeight - txtMargin;
+        // const txtPosX = pageWidth - txtWidth - txtMargin;
+        // const txtPosY = pageHeight - txtMargin;
+        const txtPosX = pageWidth - txtWidth + 80;
+        const txtPosY = pageHeight - 480;
 
         firstPage.drawText(textValue, {
           x: txtPosX,
@@ -137,6 +115,7 @@ export default function DocumentOCR() {
           size: 6,
           font: boldHelveticaFont,
           color: rgb(0, 0, 0),
+          rotate: degrees(-90),
         });
 
         // Calculate the position to place the image in the lower right corner
@@ -146,8 +125,10 @@ export default function DocumentOCR() {
         const imageYMargin = 10;
         const imageMargin = imageXMargin + imageYMargin;
 
-        const imagePosX = pageWidth - imageWidth - imageMargin;
-        const imagePosY = imageYMargin;
+        // const imagePosX = pageWidth - imageWidth - imageMargin;
+        // const imagePosY = imageYMargin;
+        const imagePosX = imageWidth - imageMargin - 20; //height
+        const imagePosY = imageYMargin + 45; // width
 
         // Draw the image on the first page of the document
         firstPage.drawImage(pngImage, {
@@ -155,6 +136,7 @@ export default function DocumentOCR() {
           y: imagePosY,
           width: imageWidth,
           height: imageHeight,
+          rotate: degrees(-90),
         });
 
         // Serialize the PDFDocument to bytes (a Uint8Array)
@@ -168,19 +150,19 @@ export default function DocumentOCR() {
         const url = URL.createObjectURL(blob);
 
         // // Create a temporary link element
-        // const link = document.createElement("a");
-        // link.href = url;
-        // link.download = "pdf-lib_modification_example.pdf";
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "pdf-lib_modification_example.pdf";
 
         // // // Append the link to the body
-        // document.body.appendChild(link);
+        document.body.appendChild(link);
 
         // // // Trigger the download
-        // link.click();
+        link.click();
 
         // // // Clean up
         // URL.revokeObjectURL(url);
-        // document.body.removeChild(link);
+        document.body.removeChild(link);
         // // End of download feature
 
         // PDF Viewer

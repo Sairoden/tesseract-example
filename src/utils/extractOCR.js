@@ -1,4 +1,4 @@
-export const extractInternalOCR = text => {
+export const extractInternalOCR = (text) => {
   const correspondenceType = [
     "Inter-office Memorandum",
     "Board Recommendation",
@@ -13,18 +13,22 @@ export const extractInternalOCR = text => {
 
   let documentType;
   if (text.includes("Dear"))
-    documentType = correspondenceType.find(type => type === "Business Letter");
+    documentType = correspondenceType.find(
+      (type) => type === "Business Letter"
+    );
   else if (text.includes("Recommendation"))
     documentType = correspondenceType.find(
-      type => type === "Board Recommendation"
+      (type) => type === "Board Recommendation"
     );
   else if (text.includes("MEMORANDUM"))
     documentType = correspondenceType.find(
-      type => type === "Inter-office Memorandum"
+      (type) => type === "Inter-office Memorandum"
     );
   else if (text.toLowerCase().includes("template"))
-    documentType = correspondenceType.find(type => type === "Templated forms");
-  else documentType = correspondenceType.find(type => type === "Others");
+    documentType = correspondenceType.find(
+      (type) => type === "Templated forms"
+    );
+  else documentType = correspondenceType.find((type) => type === "Others");
 
   // DEPARTMENT
   const departmentRegex = /^.*?Department$/im;
@@ -33,7 +37,7 @@ export const extractInternalOCR = text => {
   const department = departmentName
     ? departmentName
         .split(" ")
-        .map(word => word[0])
+        .map((word) => word[0])
         .join("")
         .toUpperCase()
     : null;
@@ -87,12 +91,12 @@ export const extractInternalOCR = text => {
   const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
   // Combine data of CTS
-  const ctsNo = `${department}_${documentType}_${splitDate}`;
+  const ctsNo = `${department}-${documentType}-${splitDate}-0001`;
 
   const OCRData = [
-    { data: `Date and Time: ${formattedDateTime}\n`, mode: "byte" },
+    { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
     { data: `CTS No.: ${ctsNo}`, mode: "byte" },
-    { data: `\nDepartment ${department}`, mode: "byte" },
+    { data: `\nDepartment: ${department}`, mode: "byte" },
     { data: `\nDocument Type: ${documentType}`, mode: "byte" },
     { data: `\nSubject: ${subject}`, mode: "byte" },
   ];
@@ -100,7 +104,7 @@ export const extractInternalOCR = text => {
   return OCRData;
 };
 
-export const extractExternalOCR = text => {
+export const extractExternalOCR = (text) => {
   let formNo, licensee, title;
 
   let cleanedText = text.replace(/CRM FORM/g, "");
@@ -158,14 +162,14 @@ export const extractExternalOCR = text => {
   const docType = title;
 
   // Combine data of CTS
-  const ctsNo = `${formNo}_${docType}_${splitDate}`;
+  const ctsNo = `${formNo}-${splitDate}-`;
 
   // Data of Department
   const department = formNo?.split("-")[0] || null;
 
   const OCRData = [
-    { data: `Date and Time: ${formattedDateTime}\n`, mode: "byte" },
-    { data: `CTS No.: ${ctsNo}`, mode: "byte" },
+    { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
+    { data: `Reference No.: ${ctsNo}`, mode: "byte" },
     { data: `\nLicensee: ${licensee}`, mode: "byte" },
     { data: `\nDepartment: ${department}`, mode: "byte" },
     { data: `\nDocument Type: ${docType}`, mode: "byte" },
