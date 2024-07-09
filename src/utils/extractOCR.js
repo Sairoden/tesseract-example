@@ -87,12 +87,12 @@ export const extractInternalOCR = text => {
   const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
   // Combine data of CTS
-  const ctsNo = `${department}_${documentType}_${splitDate}`;
+  const ctsNo = `${department}-IOM-${splitDate}-0001`;
 
   const OCRData = [
     { data: `Date and Time: ${formattedDateTime}\n`, mode: "byte" },
     { data: `CTS No.: ${ctsNo}`, mode: "byte" },
-    { data: `\nDepartment ${department}`, mode: "byte" },
+    { data: `\nDepartment: ${department}`, mode: "byte" },
     { data: `\nDocument Type: ${documentType}`, mode: "byte" },
     { data: `\nSubject: ${subject}`, mode: "byte" },
   ];
