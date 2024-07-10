@@ -2,7 +2,7 @@
 
 // backup for 05/07/2024
 // code for uploaded files
-// before changing positions of text and image
+// external
 
 // REACT
 import { useState, useRef, useEffect } from "react";
@@ -11,12 +11,12 @@ import { useState, useRef, useEffect } from "react";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import QRCode from "qrcode";
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
 import pdfToText from "react-pdftotext";
 import styled from "styled-components";
 
 // UTILS
-import { extractExternalOCR } from "../../utils";
+import { extractFromInternal} from "../../utils";
 import "./page.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -34,21 +34,20 @@ export default function DocumentOCR() {
   const [totalPages, setTotalPages] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
 
-  const handleFileChange = event => {
+  const handleFileChange = (event) => {
     const inputfile = event.target.files[0];
     setFile(inputfile);
-    console.log(inputfile);
 
     pdfToText(inputfile)
-      .then(text => setText(text))
-      .catch(error => console.log("Failed to extract text from pdf", error));
+      .then((text) => setText(text))
+      .catch((error) => console.log("Failed to extract text from pdf", error));
   };
 
   const handleFileRecognition = async () => {
     if (!file) return;
     setLoading(true);
 
-    const OCRData = extractExternalOCR(text);
+    const OCRData = extractFromInternal(text);
     setOcrData(OCRData);
 
     try {
@@ -59,7 +58,6 @@ export default function DocumentOCR() {
           return;
         }
 
-        // console.log(file);
         const pdfBuffer = await file.arrayBuffer();
 
         // Load the PDFDocument from the ArrayBuffer
@@ -67,12 +65,17 @@ export default function DocumentOCR() {
 
         // Get the first page of the document
         const pages = pdfDoc.getPages();
+        pages.forEach((page, pageIndex) => {
+          const pageRotation = page.getRotation().angle;
+          console.log(`Page ${pageIndex + 1} Rotation: `, pageRotation);
+        });
+
         const firstPage = pages[0];
 
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then(res =>
+        const pngImageBytes = await fetch(pngUrl).then((res) =>
           res.arrayBuffer()
         );
 
@@ -139,7 +142,7 @@ export default function DocumentOCR() {
 
         // // Download feature
         // // Create a URL for the Blob
-        // const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
 
         // // Create a temporary link element
         // const link = document.createElement("a");

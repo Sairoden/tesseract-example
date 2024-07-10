@@ -9,7 +9,7 @@ import pdfToText from "react-pdftotext";
 import { PDFDocument } from "pdf-lib";
 
 // UTILS
-import { extractExternalOCR } from "../utils";
+import { extractFromExternal } from "../utils";
 
 export default function HomePage() {
   const [file, setFile] = useState(null);
@@ -22,7 +22,7 @@ export default function HomePage() {
     if (!file) return;
     setLoading(true);
 
-    const OCRData = extractExternalOCR(text);
+    const OCRData = extractFromExternal(text);
     console.log(OCRData);
 
     try {
