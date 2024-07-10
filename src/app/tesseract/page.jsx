@@ -10,10 +10,10 @@ import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 
 import QRCode from "qrcode";
-import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 // UTILS
-import { extractFromInternal } from "../../utils";
+import { extractFromInternal, pageRotation } from "../../utils";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   pdfjsWorker ||
@@ -49,8 +49,8 @@ export default function Tesseract() {
     const reader = new FileReader();
     reader.onload = function () {
       setFile(reader.result);
-      console.log(readerResult);
     };
+
     reader.readAsArrayBuffer(file);
   };
 
@@ -189,53 +189,57 @@ export default function Tesseract() {
         // Create a new PDFDocument
         const newPdfDoc = await PDFDocument.create();
 
-        await Promise.all(
-          pdfDoc.getPages().map(async (page, index) => {
-            const embedPdfDoc = await newPdfDoc.embedPage(page);
-            const embedPdfDocDims = embedPdfDoc.scale(1);
-            const newPage = newPdfDoc.addPage();
-            const pageRotation = angles[index];
+        // START
+        await pageRotation(pdfDoc, newPdfDoc, angles);
 
-            // Draw the embedded page with rotation
-            if (pageRotation === 90) {
-              newPage.drawPage(embedPdfDoc, {
-                ...embedPdfDocDims,
-                x: page.getWidth() - embedPdfDocDims.width,
-                y: page.getHeight() / 2 + embedPdfDocDims.height,
-                rotate: degrees(-90),
-              });
-            } else if (pageRotation === 180) {
-              newPage.drawPage(embedPdfDoc, {
-                ...embedPdfDocDims,
-                x: page.getWidth(),
-                y: page.getHeight(),
-                rotate: degrees(180),
-              });
-            } else if (pageRotation === 270) {
-              newPage.drawPage(embedPdfDoc, {
-                ...embedPdfDocDims,
-                x: embedPdfDocDims.height,
-                y: page.getHeight() - embedPdfDocDims.height,
-                rotate: degrees(-270),
-              });
-            } else {
-              // Handle other rotation angles if needed
-              newPage.drawPage(embedPdfDoc, {
-                ...embedPdfDocDims,
-                x: 0,
-                y: 0,
-                rotate: degrees(pageRotation),
-              });
-            }
-            console.log(
-              "pdfWidth: ",
-              embedPdfDocDims.width,
-              " pdfHeight: ",
-              embedPdfDocDims.height
-            );
-            return embedPdfDoc;
-          })
-        );
+        // await Promise.all(
+        //   pdfDoc.getPages().map(async (page, index) => {
+        //     const embedPdfDoc = await newPdfDoc.embedPage(page);
+        //     const embedPdfDocDims = embedPdfDoc.scale(1);
+        //     const newPage = newPdfDoc.addPage();
+        //     const pageRotation = angles[index];
+
+        //     // Draw the embedded page with rotation
+        //     if (pageRotation === 90) {
+        //       newPage.drawPage(embedPdfDoc, {
+        //         ...embedPdfDocDims,
+        //         x: page.getWidth() - embedPdfDocDims.width,
+        //         y: page.getHeight() / 2 + embedPdfDocDims.height,
+        //         rotate: degrees(-90),
+        //       });
+        //     } else if (pageRotation === 180) {
+        //       newPage.drawPage(embedPdfDoc, {
+        //         ...embedPdfDocDims,
+        //         x: page.getWidth(),
+        //         y: page.getHeight(),
+        //         rotate: degrees(180),
+        //       });
+        //     } else if (pageRotation === 270) {
+        //       newPage.drawPage(embedPdfDoc, {
+        //         ...embedPdfDocDims,
+        //         x: embedPdfDocDims.height,
+        //         y: page.getHeight() - embedPdfDocDims.height,
+        //         rotate: degrees(-270),
+        //       });
+        //     } else {
+        //       // Handle other rotation angles if needed
+        //       newPage.drawPage(embedPdfDoc, {
+        //         ...embedPdfDocDims,
+        //         x: 0,
+        //         y: 0,
+        //         rotate: degrees(pageRotation),
+        //       });
+        //     }
+        //     console.log(
+        //       "pdfWidth: ",
+        //       embedPdfDocDims.width,
+        //       " pdfHeight: ",
+        //       embedPdfDocDims.height
+        //     );
+        //     return embedPdfDoc;
+        //   })
+        // );
+        // END
 
         // Get the first page of the document
         const afterPages = newPdfDoc.getPages();
