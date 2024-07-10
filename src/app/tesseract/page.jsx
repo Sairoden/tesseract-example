@@ -38,6 +38,7 @@ export default function Tesseract() {
   useEffect(() => {
     if (file) {
       renderPdfToCanvas(file);
+      console.log(file);
     }
   }, [file]);
 
@@ -48,11 +49,13 @@ export default function Tesseract() {
     const reader = new FileReader();
     reader.onload = function () {
       setFile(reader.result);
+      console.log(readerResult);
     };
     reader.readAsArrayBuffer(file);
   };
 
   const renderPdfToCanvas = async pdfData => {
+    // console.log(pdfData);
     const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 2.0 });
