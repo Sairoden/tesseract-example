@@ -16,7 +16,7 @@ import pdfToText from "react-pdftotext";
 import styled from "styled-components";
 
 // UTILS
-import { extractExternalOCR } from "../../utils";
+import { extractFromInternal} from "../../utils";
 import "./page.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -43,34 +43,11 @@ export default function DocumentOCR() {
       .catch((error) => console.log("Failed to extract text from pdf", error));
   };
 
-  const getPageRotation = (page) => {
-    let rotation;
-
-    // Check for Rotate on the page itself
-    const isRotated = !!page.getMaybe("Rotate");
-    if (isRotated) {
-      rotation = page.index.lookup(page.get("Rotate")).number;
-    }
-
-    // Check for Rotate on each parent node
-    page.Parent.ascend((parent) => {
-      const parentIsRotated = !!parent.getMaybe("Rotate");
-      if (rotation === undefined && parentIsRotated) {
-        rotation = parent.index.lookup(parent.get("Rotate")).number;
-      }
-    }, true);
-
-    // A rotation of 0 is the default
-    if (rotation === undefined) rotation = 0;
-
-    return rotation;
-  };
-
   const handleFileRecognition = async () => {
     if (!file) return;
     setLoading(true);
 
-    const OCRData = extractExternalOCR(text);
+    const OCRData = extractFromInternal(text);
     setOcrData(OCRData);
 
     try {

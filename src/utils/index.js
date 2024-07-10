@@ -1,1 +1,2 @@
-export { extractInternalOCR, extractExternalOCR } from "./extractOCR";
+export { extractFromInternal, extractFromExternal } from "./extractData";
+export { pageRotation } from "./pageRotation";
