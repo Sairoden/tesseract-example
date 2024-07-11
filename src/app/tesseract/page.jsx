@@ -115,6 +115,7 @@ export default function Tesseract() {
     ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
 
     const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
+    console.log(imageData);
 
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = cropWidth;
@@ -158,7 +159,6 @@ export default function Tesseract() {
     const OCRData = await handleTesseract(binarizedDataUrl);
 
     setOcrData(OCRData);
-    console.log(OCRData);
 
     // Generate QR png
     QRCode.toDataURL(
@@ -171,11 +171,9 @@ export default function Tesseract() {
         }
 
         const pdfBuffer = await inputFile.arrayBuffer();
-        console.log("pdfBuffer: ", pdfBuffer);
 
         // Load the PDFDocument from the ArrayBuffer
         const pdfDoc = await PDFDocument.load(pdfBuffer);
-        console.log("pdfDoc: ", pdfDoc);
 
         // Get the first page of the document
         const beforePages = pdfDoc.getPages();
@@ -259,7 +257,6 @@ export default function Tesseract() {
         // Embedding of QR
         // Fetch the QR code image
         const pngUrl = dataUrl;
-        console.log("pngUrl: ", pngUrl);
         const pngImageBytes = await fetch(pngUrl).then(res =>
           res.arrayBuffer()
         );
@@ -327,16 +324,13 @@ export default function Tesseract() {
 
         // Serialize the PDFDocument to bytes (a Uint8Array)
         const pdfBytes = await newPdfDoc.save();
-        console.log("pdfBytes: ", pdfBytes);
 
         // Convert Uint8Array to Blob
         const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
-        console.log("blob: ", blob);
 
         // Download feature
         // Create a URL for the Blob
         const url = URL.createObjectURL(blob);
-        console.log("url: ", url);
 
         // Create a temporary link element
         const link = document.createElement("a");
