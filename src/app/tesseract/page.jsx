@@ -177,11 +177,9 @@ export default function Tesseract() {
     getDataUrl(imageUrl)
       .then((dataUrl) => {
         setBase64(dataUrl);
-        console.log(dataUrl);
-        // You can use the dataUrl here
       })
       .catch((error) => {
-        console.error("Error converting to data URL:", error);
+        console.log("Error converting to data URL:", error);
       });
   }, []);
 
@@ -234,7 +232,7 @@ export default function Tesseract() {
     const qrCodeDataURL = await create("https://google.com", pngImg, 150, 50);
 
     // Use qrCodeDataURL as needed (e.g., display in an <img> tag or save to file)
-    console.log(qrCodeDataURL);
+    // console.log(qrCodeDataURL);
     setQrOutput(qrCodeDataURL);
 
     const pdfBuffer = await inputFile.arrayBuffer();
@@ -287,11 +285,11 @@ export default function Tesseract() {
 
     // Calculate the position to place the text in the upper right corner
     const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 8);
-    const txtXMargin = 2;
+    const txtXMargin = 10;
     const txtYMargin = 10;
     const txtMargin = txtXMargin + txtYMargin;
 
-    const txtPosX = pageWidth - txtWidth - txtMargin;
+    const txtPosX = pageWidth - txtWidth - txtXMargin;
     const txtPosY = txtYMargin;
 
     newPdfDoc.getPages().map(async (page) => {
@@ -308,7 +306,7 @@ export default function Tesseract() {
     const imageWidth = pngDims.width;
     const imageHeight = pngDims.height;
     const imageXMargin = 10;
-    const imageYMargin = 16;
+    const imageYMargin = 18;
     const imageMargin = imageXMargin + imageYMargin;
 
     const imagePosX = pageWidth - imageWidth - imageXMargin;
