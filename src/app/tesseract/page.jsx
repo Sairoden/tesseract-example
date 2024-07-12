@@ -38,7 +38,6 @@ export default function Tesseract() {
   useEffect(() => {
     if (file) {
       renderPdfToCanvas(file);
-      console.log(file);
     }
   }, [file]);
 
@@ -115,7 +114,6 @@ export default function Tesseract() {
     ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
 
     const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
-    console.log(imageData);
 
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = cropWidth;
@@ -264,6 +262,8 @@ export default function Tesseract() {
         const pngImage = await newPdfDoc.embedPng(pngImageBytes);
         const pngDims = pngImage.scale(0.15);
 
+        console.log(pngUrl);
+
         setQrImage(pngUrl);
 
         // Get the dimensions of the first page or document
@@ -328,25 +328,25 @@ export default function Tesseract() {
         // Convert Uint8Array to Blob
         const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-        // Download feature
-        // Create a URL for the Blob
-        const url = URL.createObjectURL(blob);
+        // // Download feature
+        // // Create a URL for the Blob
+        // const url = URL.createObjectURL(blob);
 
-        // Create a temporary link element
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "pdf-lib_modification_example.pdf";
+        // // Create a temporary link element
+        // const link = document.createElement("a");
+        // link.href = url;
+        // link.download = "pdf-lib_modification_example.pdf";
 
-        // Append the link to the body
-        document.body.appendChild(link);
+        // // Append the link to the body
+        // document.body.appendChild(link);
 
-        // Trigger the download
-        link.click();
+        // // Trigger the download
+        // link.click();
 
-        // Clean up
-        URL.revokeObjectURL(url);
-        document.body.removeChild(link);
-        // End of download feature
+        // // Clean up
+        // URL.revokeObjectURL(url);
+        // document.body.removeChild(link);
+        // // End of download feature
 
         // PDF Viewer
         setPdfViewer(blob, pageNumber);
