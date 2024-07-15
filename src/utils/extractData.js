@@ -1,4 +1,4 @@
-export const extractFromInternal = (text) => {
+export const extractFromInternal = text => {
   const correspondenceType = [
     "Inter-office Memorandum",
     "Board Recommendation",
@@ -11,24 +11,44 @@ export const extractFromInternal = (text) => {
     "Others",
   ];
 
+  const documentAbbreviations = {
+    "Inter-office Memorandum": "IOM",
+    "Board Recommendation": "BR",
+    "Message from the CEO/COO/Board": "MC",
+    Announcement: "A",
+    "Templated forms": "TF",
+    "Business Letter": "BL",
+    "Letter from Government Agencies/Instrumentalities/GOCCs/LGUs": "LGA",
+    "Confidential letter": "CL",
+    Others: "O",
+  };
+
+  // DOCUMENT TYPES
   let documentType;
-  if (text.includes("Dear"))
+
+  if (text.includes("Dear") && text.includes("GOCC")) {
     documentType = correspondenceType.find(
-      (type) => type === "Business Letter"
+      type =>
+        type === "Letter from Government Agencies/Instrumentalities/GOCCs/LGUs"
     );
-  else if (text.includes("Recommendation"))
+  } else if (text.includes("Dear")) {
+    documentType = correspondenceType.find(type => type === "Business Letter");
+  } else if (text.includes("Recommendation")) {
     documentType = correspondenceType.find(
-      (type) => type === "Board Recommendation"
+      type => type === "Board Recommendation"
     );
-  else if (text.includes("MEMORANDUM"))
+  } else if (text.includes("MEMORANDUM")) {
     documentType = correspondenceType.find(
-      (type) => type === "Inter-office Memorandum"
+      type => type === "Inter-office Memorandum"
     );
-  else if (text.toLowerCase().includes("template"))
-    documentType = correspondenceType.find(
-      (type) => type === "Templated forms"
-    );
-  else documentType = correspondenceType.find((type) => type === "Others");
+  } else if (text.toLowerCase().includes("template")) {
+    documentType = correspondenceType.find(type => type === "Templated forms");
+  } else {
+    documentType = correspondenceType.find(type => type === "Others");
+  }
+
+  // ABBREVIATED DOCUMENT TYPES
+  let documentTypeAbreviation = documentAbbreviations[documentType];
 
   // DEPARTMENT
   const departmentRegex = /^.*?Department$/im;
@@ -37,7 +57,7 @@ export const extractFromInternal = (text) => {
   const department = departmentName
     ? departmentName
         .split(" ")
-        .map((word) => word[0])
+        .map(word => word[0])
         .join("")
         .toUpperCase()
     : null;
@@ -91,7 +111,7 @@ export const extractFromInternal = (text) => {
   const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
   // Combine data of CTS
-  const ctsNo = `${department}-${documentType}-${splitDate}-0001`;
+  const ctsNo = `${department}-${documentTypeAbreviation}-${splitDate}-0001`;
 
   const OCRData = [
     { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
@@ -104,7 +124,7 @@ export const extractFromInternal = (text) => {
   return OCRData;
 };
 
-export const extractFromExternal = (text) => {
+export const extractFromExternal = text => {
   let formNo, licensee, title;
 
   let cleanedText = text.replace(/CRM FORM/g, "");

@@ -15,6 +15,13 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 // UTILS
 import { extractFromInternal, pageRotation } from "../../utils";
 
+// import logo from "../../assets/images/pagcor_logo.png";
+import logo from "../../assets/images/pagcor_logo.jpg";
+// import logo from "../../assets/images/pagcor.png";
+
+// import logo from "@/";
+import { createCanvas, loadImage } from "canvas";
+
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   pdfjsWorker ||
   `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -34,6 +41,8 @@ export default function Tesseract() {
   const [modifiedPDF, setModifiedPDF] = useState(null);
   const [totalPages, setTotalPages] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
+  const [base64, setBase64] = useState(null);
+  const [qrOutput, setQrOutput] = useState(null);
 
   useEffect(() => {
     if (file) {
@@ -150,6 +159,28 @@ export default function Tesseract() {
     return binarizedDataUrl;
   };
 
+  async function getDataUrl(url) {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  useEffect(() => {
+    const imageUrl = logo.src;
+    getDataUrl(imageUrl)
+      .then(dataUrl => {
+        setBase64(dataUrl);
+      })
+      .catch(error => {
+        console.log("Error converting to data URL:", error);
+      });
+  }, []);
+
   const handleOCR = async () => {
     if (!file) return;
 
@@ -158,203 +189,174 @@ export default function Tesseract() {
 
     setOcrData(OCRData);
 
+    // -----------------------------------------------------------------------------
     // Generate QR png
-    QRCode.toDataURL(
-      OCRData,
-      { errorCorrectionLevel: "H", width: 300 },
-      async (err, dataUrl) => {
-        if (err) {
-          console.log(err);
-          return;
-        }
+    async function create(dataForQRcode, logo, qrWidth, logoWidth) {
+      const canvas = createCanvas(qrWidth, qrWidth);
+      const ctx = canvas.getContext("2d");
 
-        const pdfBuffer = await inputFile.arrayBuffer();
+      await QRCode.toCanvas(canvas, dataForQRcode, {
+        errorCorrectionLevel: "H",
+        version: 5,
+        margin: 0,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
 
-        // Load the PDFDocument from the ArrayBuffer
-        const pdfDoc = await PDFDocument.load(pdfBuffer);
+      // Load logo image
+      const img = await loadImage(logo);
 
-        // Get the first page of the document
-        const beforePages = pdfDoc.getPages();
+      // Calculate center coordinates for the logo
+      // const logoSize = Math.min(qrWidth * 0.2, qrWidth / 4); // Adjust logo size if needed
+      const centerX = (qrWidth - logoWidth) / 2;
+      const centerY = (qrWidth - logoWidth) / 2;
 
-        const angles = pdfDoc.getPages().map((page, pageIndex) => {
-          const rotation = page.getRotation().angle;
-          console.log(`Before: Page ${pageIndex + 1} Rotation:`, rotation);
-          return rotation;
-        });
+      // Draw logo onto the QR code
+      ctx.drawImage(img, centerX, centerY, logoWidth, logoWidth);
 
-        // Create a new PDFDocument
-        const newPdfDoc = await PDFDocument.create();
+      // const img = await loadImage(logo);
+      // const center = qrWidth / 2 - logoWidth;
 
-        // START
-        await pageRotation(pdfDoc, newPdfDoc, angles);
+      // ctx.drawImage(img, center, center, logoWidth, logoWidth);
+      return canvas.toDataURL("image/png");
+    }
 
-        // await Promise.all(
-        //   pdfDoc.getPages().map(async (page, index) => {
-        //     const embedPdfDoc = await newPdfDoc.embedPage(page);
-        //     const embedPdfDocDims = embedPdfDoc.scale(1);
-        //     const newPage = newPdfDoc.addPage();
-        //     const pageRotation = angles[index];
+    // console.log(pngUrl);
 
-        //     // Draw the embedded page with rotation
-        //     if (pageRotation === 90) {
-        //       newPage.drawPage(embedPdfDoc, {
-        //         ...embedPdfDocDims,
-        //         x: page.getWidth() - embedPdfDocDims.width,
-        //         y: page.getHeight() / 2 + embedPdfDocDims.height,
-        //         rotate: degrees(-90),
-        //       });
-        //     } else if (pageRotation === 180) {
-        //       newPage.drawPage(embedPdfDoc, {
-        //         ...embedPdfDocDims,
-        //         x: page.getWidth(),
-        //         y: page.getHeight(),
-        //         rotate: degrees(180),
-        //       });
-        //     } else if (pageRotation === 270) {
-        //       newPage.drawPage(embedPdfDoc, {
-        //         ...embedPdfDocDims,
-        //         x: embedPdfDocDims.height,
-        //         y: page.getHeight() - embedPdfDocDims.height,
-        //         rotate: degrees(-270),
-        //       });
-        //     } else {
-        //       // Handle other rotation angles if needed
-        //       newPage.drawPage(embedPdfDoc, {
-        //         ...embedPdfDocDims,
-        //         x: 0,
-        //         y: 0,
-        //         rotate: degrees(pageRotation),
-        //       });
-        //     }
-        //     console.log(
-        //       "pdfWidth: ",
-        //       embedPdfDocDims.width,
-        //       " pdfHeight: ",
-        //       embedPdfDocDims.height
-        //     );
-        //     return embedPdfDoc;
-        //   })
-        // );
-        // END
+    const pngImg = base64;
+    // const pngImg = `data:image/png;base64, ${pngUrl}`;
 
-        // Get the first page of the document
-        const afterPages = newPdfDoc.getPages();
-        const firstPage = afterPages[0];
+    const qrCodeDataURL = await create("https://google.com", pngImg, 150, 50);
 
-        // Log rotation angle for each page
-        afterPages.forEach((page, pageIndex) => {
-          const rotation = page.getRotation().angle;
-          console.log(`After: Page ${pageIndex + 1} Rotation: `, rotation);
-        });
+    // Use qrCodeDataURL as needed (e.g., display in an <img> tag or save to file)
+    // console.log(qrCodeDataURL);
+    setQrOutput(qrCodeDataURL);
 
-        beforePages.forEach((page, pageIndex) => {
-          const rotation = page.getRotation().angle;
-          console.log(`Before 2: Page ${pageIndex + 1} Rotation: `, rotation);
-        });
+    // -----------------------------------------------------------------------------
 
-        // Embedding of QR
-        // Fetch the QR code image
-        const pngUrl = dataUrl;
-        const pngImageBytes = await fetch(pngUrl).then(res =>
-          res.arrayBuffer()
-        );
+    const pdfBuffer = await inputFile.arrayBuffer();
 
-        const pngImage = await newPdfDoc.embedPng(pngImageBytes);
-        const pngDims = pngImage.scale(0.15);
+    // Load the PDFDocument from the ArrayBuffer
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
 
-        console.log(pngUrl);
+    const angles = pdfDoc.getPages().map((page, pageIndex) => {
+      const rotation = page.getRotation().angle;
+      // console.log(`Before: Page ${pageIndex + 1} Rotation:`, rotation);
+      return rotation;
+    });
 
-        setQrImage(pngUrl);
+    // -----------------------------------------------------------------------------
+    // Create a new PDFDocument
+    const newPdfDoc = await PDFDocument.create();
 
-        // Get the dimensions of the first page or document
-        const pageWidth = firstPage.getWidth();
-        const pageHeight = firstPage.getHeight();
+    await pageRotation(pdfDoc, newPdfDoc, angles);
 
-        // Get CST Number
-        const textValue = OCRData[1].data;
+    // -----------------------------------------------------------------------------
 
-        // Embed text
-        // Normal font
-        // const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        // Bold font
-        const boldHelveticaFont = await newPdfDoc.embedFont(
-          StandardFonts.HelveticaBold
-        );
+    // Get the first page of the document
+    const rotatedPages = newPdfDoc.getPages();
+    const firstPage = rotatedPages[0];
 
-        // ------------------------------------------------------------------------------------------
+    // Embedding of QR
+    // Fetch the QR code image
+    // const pngUrl = dataUrl;
+    const pngUrl = qrCodeDataURL;
+    const pngImageBytes = await fetch(pngUrl).then(res => res.arrayBuffer());
 
-        // Calculate the position to place the text in the upper right corner
-        const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 8);
-        const txtXMargin = 2;
-        const txtYMargin = 10;
-        const txtMargin = txtXMargin + txtYMargin;
+    const pngImage = await newPdfDoc.embedPng(pngImageBytes);
+    const pngDims = pngImage.scale(0.2);
 
-        const txtPosX = pageWidth - txtWidth - txtMargin;
-        const txtPosY = txtYMargin;
+    setQrImage(pngUrl);
 
-        newPdfDoc.getPages().map(async page => {
-          page.drawText(textValue, {
-            x: txtPosX,
-            y: txtPosY,
-            size: 8,
-            font: boldHelveticaFont,
-            color: rgb(0, 0, 0),
-          });
-        });
+    // Get the dimensions of the first page or document
+    const pageWidth = firstPage.getWidth();
+    const pageHeight = firstPage.getHeight();
 
-        // Calculate the position to place the image in the lower right corner
-        const imageWidth = pngDims.width;
-        const imageHeight = pngDims.height;
-        const imageXMargin = 10;
-        const imageYMargin = 16;
-        const imageMargin = imageXMargin + imageYMargin;
+    // Get CST Number
+    const textValue = OCRData[1].data;
 
-        const imagePosX = pageWidth - imageWidth - imageXMargin;
-        const imagePosY = imageYMargin;
-
-        // Draw the image on the first page of the document
-        firstPage.drawImage(pngImage, {
-          x: imagePosX,
-          y: imagePosY,
-          width: imageWidth,
-          height: imageHeight,
-        });
-
-        // ------------------------------------------------------------------------------------------
-
-        // Serialize the PDFDocument to bytes (a Uint8Array)
-        const pdfBytes = await newPdfDoc.save();
-
-        // Convert Uint8Array to Blob
-        const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
-
-        // // Download feature
-        // // Create a URL for the Blob
-        // const url = URL.createObjectURL(blob);
-
-        // // Create a temporary link element
-        // const link = document.createElement("a");
-        // link.href = url;
-        // link.download = "pdf-lib_modification_example.pdf";
-
-        // // Append the link to the body
-        // document.body.appendChild(link);
-
-        // // Trigger the download
-        // link.click();
-
-        // // Clean up
-        // URL.revokeObjectURL(url);
-        // document.body.removeChild(link);
-        // // End of download feature
-
-        // PDF Viewer
-        setPdfViewer(blob, pageNumber);
-
-        // QR Viewer
-        setModifiedPDF(blob);
-      }
+    // Embed text
+    // Normal font
+    // const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    // Bold font
+    const boldHelveticaFont = await newPdfDoc.embedFont(
+      StandardFonts.HelveticaBold
     );
+
+    // ------------------------------------------------------------------------------------------
+
+    // Calculate the position to place the text in the upper right corner
+    const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 8);
+    const txtXMargin = 10;
+    const txtYMargin = 10;
+    const txtMargin = txtXMargin + txtYMargin;
+
+    const txtPosX = pageWidth - txtWidth - txtXMargin;
+    const txtPosY = txtYMargin;
+
+    newPdfDoc.getPages().map(async page => {
+      page.drawText(textValue, {
+        x: txtPosX,
+        y: txtPosY,
+        size: 8,
+        font: boldHelveticaFont,
+        color: rgb(0, 0, 0),
+      });
+    });
+
+    // Calculate the position to place the image in the lower right corner
+    const imageWidth = pngDims.width;
+    const imageHeight = pngDims.height;
+    const imageXMargin = 10;
+    const imageYMargin = 18;
+    const imageMargin = imageXMargin + imageYMargin;
+
+    const imagePosX = pageWidth - imageWidth - imageXMargin;
+    const imagePosY = imageYMargin;
+
+    // Draw the image on the first page of the document
+    firstPage.drawImage(pngImage, {
+      x: imagePosX,
+      y: imagePosY,
+      width: imageWidth,
+      height: imageHeight,
+    });
+
+    // ------------------------------------------------------------------------------------------
+
+    // Serialize the PDFDocument to bytes (a Uint8Array)
+    const pdfBytes = await newPdfDoc.save();
+
+    // Convert Uint8Array to Blob
+    const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
+
+    // Download feature
+    // Create a URL for the Blob
+    // const url = URL.createObjectURL(blob);
+
+    // Create a temporary link element
+    // const link = document.createElement("a");
+    // link.href = url;
+    // link.download = "pdf-lib_modification_example.pdf";
+
+    // Append the link to the body
+    // document.body.appendChild(link);
+
+    // Trigger the download
+    // link.click();
+
+    // Clean up
+    // URL.revokeObjectURL(url);
+    // document.body.removeChild(link);
+    // End of download feature
+
+    // PDF Viewer
+    setPdfViewer(blob, pageNumber);
+
+    // QR Viewer
+    setModifiedPDF(blob);
   };
 
   const getTotalPages = async () => {

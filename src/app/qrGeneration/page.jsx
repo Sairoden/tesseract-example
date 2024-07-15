@@ -40,6 +40,7 @@ export default function Tesseract() {
   const [totalPages, setTotalPages] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
   const [base64, setBase64] = useState(null);
+  const [qrOutput, setQrOutput] = useState(null);
 
   useEffect(() => {
     if (file) {
@@ -63,11 +64,12 @@ export default function Tesseract() {
   useEffect(() => {
     const imageUrl = logo.src;
     getDataUrl(imageUrl)
-      .then(dataUrl => {
+      .then((dataUrl) => {
+        setBase64(dataUrl);
         console.log(dataUrl);
         // You can use the dataUrl here
       })
-      .catch(error => {
+      .catch((error) => {
         console.error("Error converting to data URL:", error);
       });
   }, []);
@@ -75,37 +77,49 @@ export default function Tesseract() {
   // ------------------------------------------------------------
 
   const handleOCR = async () => {
-    async function create(dataForQRcode, center_image, width, cwidth) {
-      const canvas = createCanvas(width, width);
+    async function create(dataForQRcode, logo, qrWidth, logoWidth) {
+      const canvas = createCanvas(qrWidth, qrWidth);
+      const ctx = canvas.getContext("2d");
 
       await QRCode.toCanvas(canvas, dataForQRcode, {
         errorCorrectionLevel: "H",
-        margin: 1,
+        version: 5,
+        margin: 0,
         color: {
           dark: "#000000",
           light: "#ffffff",
         },
       });
 
-      const ctx = canvas.getContext("2d");
-      const img = await loadImage(center_image);
-      const center = width / 2 - cwidth;
+      // Load logo image
+      const img = await loadImage(logo);
 
-      ctx.drawImage(img, center, center, cwidth, cwidth);
+      // Calculate center coordinates for the logo
+      // const logoSize = Math.min(qrWidth * 0.2, qrWidth / 4); // Adjust logo size if needed
+      const centerX = (qrWidth - logoWidth) / 2;
+      const centerY = (qrWidth - logoWidth) / 2;
+
+      // Draw logo onto the QR code
+      ctx.drawImage(img, centerX, centerY, logoWidth, logoWidth);
+
+      // const img = await loadImage(logo);
+      // const center = qrWidth / 2 - logoWidth;
+
+      // ctx.drawImage(img, center, center, logoWidth, logoWidth);
       return canvas.toDataURL("image/png");
     }
 
-    const pngImg = `data:image/png;base64, ${pngUrl}`;
+    // console.log(pngUrl);
 
-    const qrCodeDataURL = await create("https://google.com", pngImg, 500, 50);
+    const pngImg = base64;
+    // const pngImg = `data:image/png;base64, ${pngUrl}`;
+
+    const qrCodeDataURL = await create("https://google.com", pngImg, 150, 50);
 
     // Use qrCodeDataURL as needed (e.g., display in an <img> tag or save to file)
     console.log(qrCodeDataURL);
-    setBase64(qrCodeDataURL);
+    setQrOutput(qrCodeDataURL);
   };
-
-  // Call handleOCR to initiate the process
-  // handleOCR();
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6">
@@ -115,7 +129,7 @@ export default function Tesseract() {
       >
         Generate QR
       </button>
-      <img src={base64} alt="" />
+      <img src={qrOutput} alt="" />
     </div>
   );
 }
