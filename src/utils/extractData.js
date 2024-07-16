@@ -21,6 +21,9 @@ export const extractFromInternal = text => {
     "Letter from Government Agencies/Instrumentalities/GOCCs/LGUs": "LGA",
     "Confidential letter": "CL",
     Others: "O",
+    GOCC: "GOCC",
+    LGU: "LGU",
+    Instrumentalities: "I",
   };
 
   // DOCUMENT TYPES
@@ -48,19 +51,26 @@ export const extractFromInternal = text => {
   }
 
   // ABBREVIATED DOCUMENT TYPES
-  let documentTypeAbreviation = documentAbbreviations[documentType];
+  let documentTypeAbreviation;
+  if (text.includes("GOCC"))
+    documentTypeAbreviation = documentAbbreviations["GOCC"];
+  else if (text.includes("LGU"))
+    documentTypeAbreviation = documentAbbreviations["LGU"];
+  else if (text.includes("Instrumentalities"))
+    documentTypeAbreviation = documentAbbreviations["Instrumentalities"];
+  else documentTypeAbreviation = documentAbbreviations[documentType];
 
-  // DEPARTMENT
-  const departmentRegex = /^.*?Department$/im;
-  const departmentMatch = text.match(departmentRegex);
-  const departmentName = departmentMatch ? departmentMatch[0] : null;
-  const department = departmentName
-    ? departmentName
-        .split(" ")
-        .map(word => word[0])
-        .join("")
-        .toUpperCase()
-    : null;
+  // // DEPARTMENT
+  // const departmentRegex = /^.*?Department$/im;
+  // const departmentMatch = text.match(departmentRegex);
+  // const departmentName = departmentMatch ? departmentMatch[0] : null;
+  // const department = departmentName
+  //   ? departmentName
+  //       .split(" ")
+  //       .map(word => word[0])
+  //       .join("")
+  //       .toUpperCase()
+  //   : null;
 
   // SUBJECT
   text = text.replace(/\n\n/g, " ");
@@ -111,12 +121,12 @@ export const extractFromInternal = text => {
   const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
   // Combine data of CTS
-  const ctsNo = `${department}-${documentTypeAbreviation}-${splitDate}-0001`;
+  const ctsNo = `RMD-${documentTypeAbreviation}-${splitDate}-0001`;
 
   const OCRData = [
     { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
     { data: `CTS No.: ${ctsNo}`, mode: "byte" },
-    { data: `\nDepartment: ${department}`, mode: "byte" },
+    { data: `\nDepartment: RMD`, mode: "byte" },
     { data: `\nDocument Type: ${documentType}`, mode: "byte" },
     { data: `\nSubject: ${subject}`, mode: "byte" },
   ];

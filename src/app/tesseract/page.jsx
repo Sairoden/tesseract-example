@@ -13,11 +13,9 @@ import QRCode from "qrcode";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 // UTILS
-import { extractFromInternal, pageRotation } from "../../utils";
+import { extractFromInternal, pageRotation, createQR } from "../../utils";
 
-// import logo from "../../assets/images/pagcor_logo.png";
 import logo from "../../assets/images/pagcor_logo.jpg";
-// import logo from "../../assets/images/pagcor.png";
 
 // import logo from "@/";
 import { createCanvas, loadImage } from "canvas";
@@ -35,6 +33,8 @@ export default function Tesseract() {
   const binarizedCanvasRef = useRef(null);
   const imageLoaded = useRef(false);
 
+  const qrRef = useRef(null);
+
   const pdfViewerRef = useRef(null);
   const [qrImage, setQrImage] = useState(null);
   const [ocrData, setOcrData] = useState([]);
@@ -43,6 +43,8 @@ export default function Tesseract() {
   const [pageNumber, setPageNumber] = useState(1);
   const [base64, setBase64] = useState(null);
   const [qrOutput, setQrOutput] = useState(null);
+
+  const [myQr, setMyQr] = useState(null);
 
   useEffect(() => {
     if (file) {
@@ -189,52 +191,18 @@ export default function Tesseract() {
 
     setOcrData(OCRData);
 
-    // -----------------------------------------------------------------------------
-    // Generate QR png
-    async function create(dataForQRcode, logo, qrWidth, logoWidth) {
-      const canvas = createCanvas(qrWidth, qrWidth);
-      const ctx = canvas.getContext("2d");
+    const qrCodeDataURL = createQR({
+      data: "www.google.com",
+      logo: logo.src,
+      width: 150,
+      height: 150,
+    });
 
-      await QRCode.toCanvas(canvas, dataForQRcode, {
-        errorCorrectionLevel: "H",
-        version: 5,
-        margin: 0,
-        color: {
-          dark: "#000000",
-          light: "#ffffff",
-        },
-      });
+    qrCodeDataURL.append(qrRef.current);
 
-      // Load logo image
-      const img = await loadImage(logo);
+    const qrBlob = await qrCodeDataURL.getRawData("png");
 
-      // Calculate center coordinates for the logo
-      // const logoSize = Math.min(qrWidth * 0.2, qrWidth / 4); // Adjust logo size if needed
-      const centerX = (qrWidth - logoWidth) / 2;
-      const centerY = (qrWidth - logoWidth) / 2;
-
-      // Draw logo onto the QR code
-      ctx.drawImage(img, centerX, centerY, logoWidth, logoWidth);
-
-      // const img = await loadImage(logo);
-      // const center = qrWidth / 2 - logoWidth;
-
-      // ctx.drawImage(img, center, center, logoWidth, logoWidth);
-      return canvas.toDataURL("image/png");
-    }
-
-    // console.log(pngUrl);
-
-    const pngImg = base64;
-    // const pngImg = `data:image/png;base64, ${pngUrl}`;
-
-    const qrCodeDataURL = await create("https://google.com", pngImg, 150, 50);
-
-    // Use qrCodeDataURL as needed (e.g., display in an <img> tag or save to file)
-    // console.log(qrCodeDataURL);
-    setQrOutput(qrCodeDataURL);
-
-    // -----------------------------------------------------------------------------
+    const qrBuffer = await new Response(qrBlob).arrayBuffer();
 
     const pdfBuffer = await inputFile.arrayBuffer();
 
@@ -243,7 +211,7 @@ export default function Tesseract() {
 
     const angles = pdfDoc.getPages().map((page, pageIndex) => {
       const rotation = page.getRotation().angle;
-      // console.log(`Before: Page ${pageIndex + 1} Rotation:`, rotation);
+
       return rotation;
     });
 
@@ -259,16 +227,8 @@ export default function Tesseract() {
     const rotatedPages = newPdfDoc.getPages();
     const firstPage = rotatedPages[0];
 
-    // Embedding of QR
-    // Fetch the QR code image
-    // const pngUrl = dataUrl;
-    const pngUrl = qrCodeDataURL;
-    const pngImageBytes = await fetch(pngUrl).then(res => res.arrayBuffer());
-
-    const pngImage = await newPdfDoc.embedPng(pngImageBytes);
+    const pngImage = await newPdfDoc.embedPng(qrBuffer);
     const pngDims = pngImage.scale(0.2);
-
-    setQrImage(pngUrl);
 
     // Get the dimensions of the first page or document
     const pageWidth = firstPage.getWidth();
@@ -332,25 +292,25 @@ export default function Tesseract() {
     // Convert Uint8Array to Blob
     const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-    // Download feature
-    // Create a URL for the Blob
+    // // Download feature
+    // // Create a URL for the Blob
     // const url = URL.createObjectURL(blob);
 
-    // Create a temporary link element
+    // // Create a temporary link element
     // const link = document.createElement("a");
     // link.href = url;
     // link.download = "pdf-lib_modification_example.pdf";
 
-    // Append the link to the body
+    // // Append the link to the body
     // document.body.appendChild(link);
 
-    // Trigger the download
+    // // Trigger the download
     // link.click();
 
-    // Clean up
+    // // Clean up
     // URL.revokeObjectURL(url);
     // document.body.removeChild(link);
-    // End of download feature
+    // // End of download feature
 
     // PDF Viewer
     setPdfViewer(blob, pageNumber);
@@ -437,6 +397,8 @@ export default function Tesseract() {
   return (
     <div className="flex flex-col items-center justify-center space-y-6">
       <div className="flex items-center space-x-4">
+        {myQr && <div ref={ref => myQr.append(ref)} />}
+
         <input
           type="file"
           className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -494,14 +456,12 @@ export default function Tesseract() {
             }}
           >
             <div style={{ border: "1px black solid", width: "75%" }}>
-              {ocrData.map((data, index) => (
+              {ocrData?.map((data, index) => (
                 <p key={index}>{data.data}</p>
               ))}
             </div>
             <div style={{ border: "1px black solid" }}>
-              {qrImage && (
-                <img src={qrImage} width="150px" height="150px" alt="QR Code" />
-              )}
+              <div ref={qrRef} />
             </div>
           </div>
           <h2>Document Preview with QR Code</h2>
@@ -515,8 +475,6 @@ export default function Tesseract() {
             <canvas
               ref={pdfViewerRef}
               id="theCanvas"
-              // width="100%"
-              // height="0"
               style={{
                 maxWidth: "100%",
                 // maxHeight: "auto",
