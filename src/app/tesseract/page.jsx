@@ -16,8 +16,8 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { extractFromInternal, pageRotation } from "../../utils";
 
 // import logo from "../../assets/images/pagcor_logo.png";
-import logo from "../../assets/images/pagcor_logo.jpg";
-// import logo from "../../assets/images/pagcor.png";
+// import logo from "../../assets/images/pagcor_logo.jpg";
+import logo from "../../assets/images/pagcor.png";
 
 // import logo from "@/";
 import { createCanvas, loadImage } from "canvas";
@@ -189,6 +189,47 @@ export default function Tesseract() {
     const binarizedDataUrl = preprocessAndRunOCR();
     const OCRData = await handleTesseract(binarizedDataUrl);
 
+    // Hard coded OCR data
+    // const subject = "SAMPLE SUBJECT";
+
+    // // Data of formatted date and time
+    // const currentDate = new Date();
+
+    // // Format date part (MM/DD/YYYY)
+    // const formattedDate = currentDate.toLocaleDateString("en-US", {
+    //   month: "2-digit",
+    //   day: "2-digit",
+    //   year: "numeric",
+    // });
+
+    // // Format time part (hh:mm AM/PM)
+    // const hours = currentDate.getHours();
+    // const minutes = currentDate.getMinutes();
+    // const ampm = hours >= 12 ? "PM" : "AM";
+    // const formattedTime = `${hours === 12 ? 12 : hours % 12}:${minutes
+    //   .toString()
+    //   .padStart(2, "0")} ${ampm}`;
+
+    // // Combine date and time parts
+    // const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
+
+    // // Data of CTS
+    // const dateArray = formattedDate.split("/");
+    // const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
+
+    // const department = "SAMPLE";
+    // const documentType = "Sample DocType";
+    // // Combine data of CTS
+    // const ctsNo = `${department}-${documentType}-${splitDate}-0001`;
+
+    // const OCRData = [
+    //   { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
+    //   { data: `CTS No.: ${ctsNo}`, mode: "byte" },
+    //   { data: `\nDepartment: ${department}`, mode: "byte" },
+    //   { data: `\nDocument Type: ${documentType}`, mode: "byte" },
+    //   { data: `\nSubject: ${subject}`, mode: "byte" },
+    // ];
+
     setOcrData(OCRData);
 
     // Generate QR png
@@ -262,7 +303,7 @@ export default function Tesseract() {
     const pngImageBytes = await fetch(pngUrl).then((res) => res.arrayBuffer());
 
     const pngImage = await newPdfDoc.embedPng(pngImageBytes);
-    const pngDims = pngImage.scale(0.2);
+    const pngDims = pngImage.scale(0.25);
 
     setQrImage(pngUrl);
 
@@ -285,7 +326,7 @@ export default function Tesseract() {
 
     // Calculate the position to place the text in the upper right corner
     const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 8);
-    const txtXMargin = 10;
+    const txtXMargin = 9;
     const txtYMargin = 10;
     const txtMargin = txtXMargin + txtYMargin;
 
@@ -330,7 +371,7 @@ export default function Tesseract() {
 
     // Download feature
     // Create a URL for the Blob
-    // const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
 
     // Create a temporary link element
     // const link = document.createElement("a");
