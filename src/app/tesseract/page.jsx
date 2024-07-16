@@ -189,10 +189,51 @@ export default function Tesseract() {
     const binarizedDataUrl = preprocessAndRunOCR();
     const OCRData = await handleTesseract(binarizedDataUrl);
 
+    // Hard coded OCR data
+    // const subject = "SAMPLE SUBJECT";
+
+    // // Data of formatted date and time
+    // const currentDate = new Date();
+
+    // // Format date part (MM/DD/YYYY)
+    // const formattedDate = currentDate.toLocaleDateString("en-US", {
+    //   month: "2-digit",
+    //   day: "2-digit",
+    //   year: "numeric",
+    // });
+
+    // // Format time part (hh:mm AM/PM)
+    // const hours = currentDate.getHours();
+    // const minutes = currentDate.getMinutes();
+    // const ampm = hours >= 12 ? "PM" : "AM";
+    // const formattedTime = `${hours === 12 ? 12 : hours % 12}:${minutes
+    //   .toString()
+    //   .padStart(2, "0")} ${ampm}`;
+
+    // // Combine date and time parts
+    // const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
+
+    // // Data of CTS
+    // const dateArray = formattedDate.split("/");
+    // const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
+
+    // const department = "SAMPLE";
+    // const documentType = "Sample DocType";
+    // // Combine data of CTS
+    // const ctsNo = `${department}-${documentType}-${splitDate}-0001`;
+
+    // const OCRData = [
+    //   { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
+    //   { data: `CTS No.: ${ctsNo}`, mode: "byte" },
+    //   { data: `\nDepartment: ${department}`, mode: "byte" },
+    //   { data: `\nDocument Type: ${documentType}`, mode: "byte" },
+    //   { data: `\nSubject: ${subject}`, mode: "byte" },
+    // ];
+
     setOcrData(OCRData);
 
     const qrCodeDataURL = createQR({
-      data: "www.google.com",
+      data: "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=drive_link",
       logo: logo.src,
       width: 150,
       height: 150,
@@ -249,7 +290,7 @@ export default function Tesseract() {
 
     // Calculate the position to place the text in the upper right corner
     const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 8);
-    const txtXMargin = 10;
+    const txtXMargin = 9;
     const txtYMargin = 10;
     const txtMargin = txtXMargin + txtYMargin;
 
@@ -292,25 +333,25 @@ export default function Tesseract() {
     // Convert Uint8Array to Blob
     const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-    // // Download feature
-    // // Create a URL for the Blob
-    // const url = URL.createObjectURL(blob);
+    //  Download feature
+    // Create a URL for the Blob
+    const url = URL.createObjectURL(blob);
 
-    // // Create a temporary link element
-    // const link = document.createElement("a");
-    // link.href = url;
-    // link.download = "pdf-lib_modification_example.pdf";
+    // Create a temporary link element
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "pdf-lib_modification_example.pdf";
 
-    // // Append the link to the body
-    // document.body.appendChild(link);
+    // Append the link to the body
+    document.body.appendChild(link);
 
-    // // Trigger the download
-    // link.click();
+    // Trigger the download
+    link.click();
 
-    // // Clean up
-    // URL.revokeObjectURL(url);
-    // document.body.removeChild(link);
-    // // End of download feature
+    // Clean up
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+    // End of download feature
 
     // PDF Viewer
     setPdfViewer(blob, pageNumber);

@@ -1,8 +1,7 @@
 "use client";
 
 // backup for 09/07/2024
-// backup for embedding pdf
-// all angles
+// backup before changing qr color
 
 // REACT
 import { useState, useRef, useEffect } from "react";
