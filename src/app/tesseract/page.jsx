@@ -230,6 +230,10 @@ export default function Tesseract() {
 
     setOcrData(OCRData);
 
+    // let myData = "https://google.com";
+    let myData =
+      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link";
+
     async function create(dataForQRcode, logo, qrWidth) {
       const canvas = createCanvas(qrWidth, qrWidth);
       const ctx = canvas.getContext("2d");
@@ -277,10 +281,6 @@ export default function Tesseract() {
       // Load logo image
       const img = await loadImage(logo);
 
-      // const myData = "google.com";
-      const myData =
-        "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link";
-
       // Calculate center coordinates for the logo
       // const centerX = (canvas.width - logoWidth) / 2;
       // const centerY = (canvas.height - logoWidth) / 2;
@@ -290,7 +290,8 @@ export default function Tesseract() {
 
       // Determine the logo width based on the length of the data with a minimum size
       const minLogoWidth = 30; // Minimum desired logo width
-      let logoWidth = myData.length * 2; // Calculate logo width based on the length of the data
+      let logoWidth = myData.length * 0.8; // Calculate logo width based on the length of the data
+
       if (logoWidth < minLogoWidth) {
         logoWidth = minLogoWidth; // Enforce minimum logo width
       }
@@ -311,8 +312,9 @@ export default function Tesseract() {
     // const pngImg = `data:image/png;base64, ${pngUrl}`;
 
     const qrCodeDataURL = await create(
-      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link",
+      // "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link",
       // "google.com",
+      myData,
       pngImg,
       150,
       50
@@ -346,7 +348,7 @@ export default function Tesseract() {
     const firstPage = rotatedPages[0];
 
     const pngUrl = qrCodeDataURL;
-    const pngImageBytes = await fetch(pngUrl).then((res) => res.arrayBuffer());
+    const pngImageBytes = await fetch(pngUrl).then(res => res.arrayBuffer());
 
     setQrImage(pngUrl);
 
