@@ -121,7 +121,7 @@ export const extractFromInternal = text => {
   const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
   // Combine data of CTS
-  const ctsNo = `RMD-GOCC-07162024-0001`;
+  const ctsNo = `RMD-${documentTypeAbreviation}-${splitDate}-0001`;
 
   const OCRData = [
     { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
