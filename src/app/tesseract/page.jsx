@@ -49,7 +49,7 @@ export default function Tesseract() {
     }
   }, [file]);
 
-  const handleFileChange = e => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     setInputFile(file);
 
@@ -61,7 +61,7 @@ export default function Tesseract() {
     reader.readAsArrayBuffer(file);
   };
 
-  const renderPdfToCanvas = async pdfData => {
+  const renderPdfToCanvas = async (pdfData) => {
     const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 2.0 });
@@ -82,7 +82,7 @@ export default function Tesseract() {
     imageLoaded.current = true;
   };
 
-  const handleTesseract = async img => {
+  const handleTesseract = async (img) => {
     try {
       setIsLoading(true);
 
@@ -172,10 +172,10 @@ export default function Tesseract() {
   useEffect(() => {
     const imageUrl = logo.src;
     getDataUrl(imageUrl)
-      .then(dataUrl => {
+      .then((dataUrl) => {
         setBase64(dataUrl);
       })
-      .catch(error => {
+      .catch((error) => {
         console.log("Error converting to data URL:", error);
       });
   }, []);
@@ -184,63 +184,145 @@ export default function Tesseract() {
     if (!file) return;
 
     const binarizedDataUrl = preprocessAndRunOCR();
-    const OCRData = await handleTesseract(binarizedDataUrl);
+    // const OCRData = await handleTesseract(binarizedDataUrl);
 
     // Hard coded OCR data
-    // const subject = "SAMPLE SUBJECT";
+    const subject = "SAMPLE SUBJECT";
 
-    // // Data of formatted date and time
-    // const currentDate = new Date();
+    // Data of formatted date and time
+    const currentDate = new Date();
 
-    // // Format date part (MM/DD/YYYY)
-    // const formattedDate = currentDate.toLocaleDateString("en-US", {
-    //   month: "2-digit",
-    //   day: "2-digit",
-    //   year: "numeric",
-    // });
+    // Format date part (MM/DD/YYYY)
+    const formattedDate = currentDate.toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    });
 
-    // // Format time part (hh:mm AM/PM)
-    // const hours = currentDate.getHours();
-    // const minutes = currentDate.getMinutes();
-    // const ampm = hours >= 12 ? "PM" : "AM";
-    // const formattedTime = `${hours === 12 ? 12 : hours % 12}:${minutes
-    //   .toString()
-    //   .padStart(2, "0")} ${ampm}`;
+    // Format time part (hh:mm AM/PM)
+    const hours = currentDate.getHours();
+    const minutes = currentDate.getMinutes();
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const formattedTime = `${hours === 12 ? 12 : hours % 12}:${minutes
+      .toString()
+      .padStart(2, "0")} ${ampm}`;
 
-    // // Combine date and time parts
-    // const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
+    // Combine date and time parts
+    const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
 
-    // // Data of CTS
-    // const dateArray = formattedDate.split("/");
-    // const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
+    // Data of CTS
+    const dateArray = formattedDate.split("/");
+    const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
-    // const department = "SAMPLE";
-    // const documentType = "Sample DocType";
-    // // Combine data of CTS
-    // const ctsNo = `${department}-${documentType}-${splitDate}-0001`;
+    const department = "RMD";
+    const documentType = "GOCC";
+    // Combine data of CTS
+    const ctsNo = `${department}-${documentType}-${splitDate}-0001`;
 
-    // const OCRData = [
-    //   { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
-    //   { data: `CTS No.: ${ctsNo}`, mode: "byte" },
-    //   { data: `\nDepartment: ${department}`, mode: "byte" },
-    //   { data: `\nDocument Type: ${documentType}`, mode: "byte" },
-    //   { data: `\nSubject: ${subject}`, mode: "byte" },
-    // ];
+    const OCRData = [
+      { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
+      { data: `CTS No.: ${ctsNo}`, mode: "byte" },
+      { data: `\nDepartment: ${department}`, mode: "byte" },
+      { data: `\nDocument Type: ${documentType}`, mode: "byte" },
+      { data: `\nSubject: ${subject}`, mode: "byte" },
+    ];
 
     setOcrData(OCRData);
 
-    const qrCodeDataURL = createQR({
-      data: "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=drive_link",
-      logo: logo.src,
-      width: 150,
-      height: 150,
-    });
+    // Generate QR png
+    async function create(dataForQRcode, logo, qrWidth, logoWidth) {
+      const canvas = createCanvas(qrWidth, qrWidth);
+      const ctx = canvas.getContext("2d");
 
-    qrCodeDataURL.append(qrRef.current);
+      await QRCode.toCanvas(canvas, dataForQRcode, {
+        errorCorrectionLevel: "H",
+        version: 5,
+        margin: 0,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
 
-    const qrBlob = await qrCodeDataURL.getRawData("png");
+      // Modify the colors to have one half blue and the other half red
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
 
-    const qrBuffer = await new Response(qrBlob).arrayBuffer();
+      // Change dots' colors based on 45-degree line
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const index = (y * canvas.width + x) * 4;
+          if (
+            data[index] === 0 &&
+            data[index + 1] === 0 &&
+            data[index + 2] === 0
+          ) {
+            // Check for black (QR code dots)
+            // 700
+            if (x + y < canvas.width) {
+              // Change to blue
+              data[index] = 3; // Red
+              data[index + 1] = 4; // Green
+              data[index + 2] = 115; // Blue
+            } else {
+              // Change to red
+              data[index] = 224; // Red
+              data[index + 1] = 0; // Green
+              data[index + 2] = 1; // Blue
+            }
+
+            //500
+            // if (x + y < canvas.width) {
+            //   // Change to blue
+            //   data[index] = 2; // Red
+            //   data[index + 1] = 62; // Green
+            //   data[index + 2] = 208; // Blue
+            // } else {
+            //   // Change to red
+            //   data[index] = 224; // Red
+            //   data[index + 1] = 0; // Green
+            //   data[index + 2] = 1; // Blue
+            // }
+          }
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      // Load logo image
+      const img = await loadImage(logo);
+
+      // Calculate center coordinates for the logo
+      // const logoSize = Math.min(qrWidth * 0.2, qrWidth / 4); // Adjust logo size if needed
+      const centerX = (qrWidth - logoWidth) / 2;
+      const centerY = (qrWidth - logoWidth) / 2;
+
+      // Draw logo onto the QR code
+      ctx.drawImage(img, centerX, centerY, logoWidth, logoWidth);
+
+      // const img = await loadImage(logo);
+      // const center = qrWidth / 2 - logoWidth;
+
+      // ctx.drawImage(img, center, center, logoWidth, logoWidth);
+      return canvas.toDataURL("image/png");
+    }
+
+    // console.log(pngUrl);
+
+    const pngImg = base64;
+    // const pngImg = `data:image/png;base64, ${pngUrl}`;
+
+    const qrCodeDataURL = await create(
+      // "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=drive_link",
+      "https://google.com",
+      pngImg,
+      150,
+      50
+    );
+
+    // Use qrCodeDataURL as needed (e.g., display in an <img> tag or save to file)
+    // console.log(qrCodeDataURL);
+    setQrOutput(qrCodeDataURL);
 
     const pdfBuffer = await inputFile.arrayBuffer();
 
@@ -294,7 +376,7 @@ export default function Tesseract() {
     const txtPosX = pageWidth - txtWidth - txtXMargin;
     const txtPosY = txtYMargin;
 
-    newPdfDoc.getPages().map(async page => {
+    newPdfDoc.getPages().map(async (page) => {
       page.drawText(textValue, {
         x: txtPosX,
         y: txtPosY,
@@ -341,11 +423,15 @@ export default function Tesseract() {
 
     // Append the link to the body
     document.body.appendChild(link);
+    document.body.appendChild(link);
 
     // Trigger the download
     link.click();
+    link.click();
 
     // Clean up
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
     document.body.removeChild(link);
     // End of download feature
@@ -435,7 +521,7 @@ export default function Tesseract() {
   return (
     <div className="flex flex-col items-center justify-center space-y-6">
       <div className="flex items-center space-x-4">
-        {myQr && <div ref={ref => myQr.append(ref)} />}
+        {myQr && <div ref={(ref) => myQr.append(ref)} />}
 
         <input
           type="file"
