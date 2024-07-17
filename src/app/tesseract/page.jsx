@@ -16,7 +16,7 @@ import QRCode from "qrcode";
 import { extractFromInternal, pageRotation, createQR } from "../../utils";
 
 // ASSETS
-import logo from "../../assets/images/pagcor_logo.jpg";
+import logo from "../../assets/images/pagcor.png";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   pdfjsWorker ||
@@ -185,48 +185,7 @@ export default function Tesseract() {
     if (!file) return;
 
     const binarizedDataUrl = preprocessAndRunOCR();
-    // const OCRData = await handleTesseract(binarizedDataUrl);
-
-    // Hard coded OCR data
-    const subject = "SAMPLE SUBJECT";
-
-    // Data of formatted date and time
-    const currentDate = new Date();
-
-    // Format date part (MM/DD/YYYY)
-    const formattedDate = currentDate.toLocaleDateString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "numeric",
-    });
-
-    // Format time part (hh:mm AM/PM)
-    const hours = currentDate.getHours();
-    const minutes = currentDate.getMinutes();
-    const ampm = hours >= 12 ? "PM" : "AM";
-    const formattedTime = `${hours === 12 ? 12 : hours % 12}:${minutes
-      .toString()
-      .padStart(2, "0")} ${ampm}`;
-
-    // Combine date and time parts
-    const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
-
-    // Data of CTS
-    const dateArray = formattedDate.split("/");
-    const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
-
-    const department = "RMD";
-    const documentType = "GOCC";
-    // Combine data of CTS
-    const ctsNo = `${department}-${documentType}-${splitDate}-0001`;
-
-    const OCRData = [
-      { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
-      { data: `CTS No.: ${ctsNo}`, mode: "byte" },
-      { data: `\nDepartment: ${department}`, mode: "byte" },
-      { data: `\nDocument Type: ${documentType}`, mode: "byte" },
-      { data: `\nSubject: ${subject}`, mode: "byte" },
-    ];
+    const OCRData = await handleTesseract(binarizedDataUrl);
 
     setOcrData(OCRData);
 
@@ -239,7 +198,7 @@ export default function Tesseract() {
       const ctx = canvas.getContext("2d");
 
       await QRCode.toCanvas(canvas, dataForQRcode, {
-        errorCorrectionLevel: "M",
+        errorCorrectionLevel: "H",
         margin: 0,
         color: {
           dark: "#000000",
@@ -263,9 +222,9 @@ export default function Tesseract() {
             // Check for black (QR code dots)
             if (x + y < canvas.width) {
               // Change to blue
-              data[index] = 3; // Red
-              data[index + 1] = 4; // Green
-              data[index + 2] = 115; // Blue
+              data[index] = 2; // Red
+              data[index + 1] = 62; // Green
+              data[index + 2] = 208; // Blue
             } else {
               // Change to red
               data[index] = 224; // Red
@@ -312,9 +271,10 @@ export default function Tesseract() {
     // const pngImg = `data:image/png;base64, ${pngUrl}`;
 
     const qrCodeDataURL = await create(
-      // "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link",
+      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link",
       // "google.com",
-      myData,
+      // OCRData,
+      // myData,
       pngImg,
       150,
       50
@@ -360,7 +320,9 @@ export default function Tesseract() {
     const pageHeight = firstPage.getHeight();
 
     // Get CST Number
-    const textValue = OCRData[1].data;
+    const textValue = OCRData[1].data.split(": ")[1];
+
+    // console.log(T)
 
     // Embed text
     // Normal font
@@ -395,8 +357,8 @@ export default function Tesseract() {
     // const imageWidth = pngDims.width;
     // const imageHeight = pngDims.height;
     console.log("This is my image width/height", pngDims.width, pngDims.height);
-    const imageWidth = 31;
-    const imageHeight = 31;
+    const imageWidth = 35;
+    const imageHeight = 35;
 
     // ---------------------------IMAGE HEIGHT/WIDTH -------------------------------
 
@@ -423,26 +385,24 @@ export default function Tesseract() {
     // Convert Uint8Array to Blob
     const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-    // //  Download feature
-    // // Create a URL for the Blob
-    // const url = URL.createObjectURL(blob);
+    //  Download feature
+    // Create a URL for the Blob
+    const url = URL.createObjectURL(blob);
 
-    // // Create a temporary link element
-    // const link = document.createElement("a");
-    // link.href = url;
-    // link.download = "pdf-lib_modification_example.pdf";
+    // Create a temporary link element
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "pdf-lib_modification_example.pdf";
 
-    // // Append the link to the body
-    // document.body.appendChild(link);
-    // document.body.appendChild(link);
+    // Append the link to the body
+    document.body.appendChild(link);
 
-    // // Trigger the download
-    // link.click();
-    // link.click();
+    // Trigger the download
+    link.click();
 
     // Clean up
-    // URL.revokeObjectURL(url);
-    // document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
     // End of download feature
 
     // PDF Viewer
