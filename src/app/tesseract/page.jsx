@@ -50,7 +50,7 @@ export default function Tesseract() {
     }
   }, [file]);
 
-  const handleFileChange = e => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     setInputFile(file);
 
@@ -62,7 +62,7 @@ export default function Tesseract() {
     reader.readAsArrayBuffer(file);
   };
 
-  const renderPdfToCanvas = async pdfData => {
+  const renderPdfToCanvas = async (pdfData) => {
     const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 2.0 });
@@ -83,7 +83,7 @@ export default function Tesseract() {
     imageLoaded.current = true;
   };
 
-  const handleTesseract = async img => {
+  const handleTesseract = async (img) => {
     try {
       setIsLoading(true);
 
@@ -173,10 +173,10 @@ export default function Tesseract() {
   useEffect(() => {
     const imageUrl = logo.src;
     getDataUrl(imageUrl)
-      .then(dataUrl => {
+      .then((dataUrl) => {
         setBase64(dataUrl);
       })
-      .catch(error => {
+      .catch((error) => {
         console.log("Error converting to data URL:", error);
       });
   }, []);
@@ -235,7 +235,7 @@ export default function Tesseract() {
       const ctx = canvas.getContext("2d");
 
       await QRCode.toCanvas(canvas, dataForQRcode, {
-        errorCorrectionLevel: "H",
+        errorCorrectionLevel: "M",
         margin: 0,
         color: {
           dark: "#000000",
@@ -259,9 +259,9 @@ export default function Tesseract() {
             // Check for black (QR code dots)
             if (x + y < canvas.width) {
               // Change to blue
-              data[index] = 3; // Red
-              data[index + 1] = 4; // Green
-              data[index + 2] = 115; // Blue
+              data[index] = 2; // Red
+              data[index + 1] = 62; // Green
+              data[index + 2] = 208; // Blue
             } else {
               // Change to red
               data[index] = 224; // Red
@@ -361,7 +361,7 @@ export default function Tesseract() {
     const txtPosX = pageWidth - txtWidth - txtXMargin;
     const txtPosY = txtYMargin;
 
-    newPdfDoc.getPages().map(async page => {
+    newPdfDoc.getPages().map(async (page) => {
       page.drawText(textValue, {
         x: txtPosX,
         y: txtPosY,
@@ -397,26 +397,26 @@ export default function Tesseract() {
     // Convert Uint8Array to Blob
     const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-    // //  Download feature
-    // // Create a URL for the Blob
-    // const url = URL.createObjectURL(blob);
+    //  Download feature
+    // Create a URL for the Blob
+    const url = URL.createObjectURL(blob);
 
-    // // Create a temporary link element
-    // const link = document.createElement("a");
-    // link.href = url;
-    // link.download = "pdf-lib_modification_example.pdf";
+    // Create a temporary link element
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "pdf-lib_modification_example.pdf";
 
-    // // Append the link to the body
-    // document.body.appendChild(link);
-    // document.body.appendChild(link);
+    // Append the link to the body
+    document.body.appendChild(link);
+    document.body.appendChild(link);
 
-    // // Trigger the download
-    // link.click();
-    // link.click();
+    // Trigger the download
+    link.click();
+    link.click();
 
     // Clean up
-    // URL.revokeObjectURL(url);
-    // document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
     // End of download feature
 
     // PDF Viewer
@@ -504,7 +504,7 @@ export default function Tesseract() {
   return (
     <div className="flex flex-col items-center justify-center space-y-6">
       <div className="flex items-center space-x-4">
-        {myQr && <div ref={ref => myQr.append(ref)} />}
+        {myQr && <div ref={(ref) => myQr.append(ref)} />}
 
         <input
           type="file"
