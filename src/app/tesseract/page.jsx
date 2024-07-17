@@ -8,17 +8,14 @@ import { createWorker } from "tesseract.js";
 import cv from "@techstark/opencv-js";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
-
-import QRCode from "qrcode";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { createCanvas, loadImage } from "canvas";
 
 // UTILS
 import { extractFromInternal, pageRotation, createQR } from "../../utils";
 
+// ASSETS
 import logo from "../../assets/images/pagcor_logo.jpg";
-
-// import logo from "@/";
-import { createCanvas, loadImage } from "canvas";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   pdfjsWorker ||
