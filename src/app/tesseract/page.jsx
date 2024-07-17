@@ -187,48 +187,48 @@ export default function Tesseract() {
     if (!file) return;
 
     const binarizedDataUrl = preprocessAndRunOCR();
-    const OCRData = await handleTesseract(binarizedDataUrl);
+    // const OCRData = await handleTesseract(binarizedDataUrl);
 
     // Hard coded OCR data
-    // const subject = "SAMPLE SUBJECT";
+    const subject = "SAMPLE SUBJECT";
 
-    // // Data of formatted date and time
-    // const currentDate = new Date();
+    // Data of formatted date and time
+    const currentDate = new Date();
 
-    // // Format date part (MM/DD/YYYY)
-    // const formattedDate = currentDate.toLocaleDateString("en-US", {
-    //   month: "2-digit",
-    //   day: "2-digit",
-    //   year: "numeric",
-    // });
+    // Format date part (MM/DD/YYYY)
+    const formattedDate = currentDate.toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    });
 
-    // // Format time part (hh:mm AM/PM)
-    // const hours = currentDate.getHours();
-    // const minutes = currentDate.getMinutes();
-    // const ampm = hours >= 12 ? "PM" : "AM";
-    // const formattedTime = `${hours === 12 ? 12 : hours % 12}:${minutes
-    //   .toString()
-    //   .padStart(2, "0")} ${ampm}`;
+    // Format time part (hh:mm AM/PM)
+    const hours = currentDate.getHours();
+    const minutes = currentDate.getMinutes();
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const formattedTime = `${hours === 12 ? 12 : hours % 12}:${minutes
+      .toString()
+      .padStart(2, "0")} ${ampm}`;
 
-    // // Combine date and time parts
-    // const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
+    // Combine date and time parts
+    const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
 
-    // // Data of CTS
-    // const dateArray = formattedDate.split("/");
-    // const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
+    // Data of CTS
+    const dateArray = formattedDate.split("/");
+    const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
-    // const department = "SAMPLE";
-    // const documentType = "Sample DocType";
-    // // Combine data of CTS
-    // const ctsNo = `${department}-${documentType}-${splitDate}-0001`;
+    const department = "RMD";
+    const documentType = "GOCC";
+    // Combine data of CTS
+    const ctsNo = `${department}-${documentType}-${splitDate}-0001`;
 
-    // const OCRData = [
-    //   { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
-    //   { data: `CTS No.: ${ctsNo}`, mode: "byte" },
-    //   { data: `\nDepartment: ${department}`, mode: "byte" },
-    //   { data: `\nDocument Type: ${documentType}`, mode: "byte" },
-    //   { data: `\nSubject: ${subject}`, mode: "byte" },
-    // ];
+    const OCRData = [
+      { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
+      { data: `CTS No.: ${ctsNo}`, mode: "byte" },
+      { data: `\nDepartment: ${department}`, mode: "byte" },
+      { data: `\nDocument Type: ${documentType}`, mode: "byte" },
+      { data: `\nSubject: ${subject}`, mode: "byte" },
+    ];
 
     setOcrData(OCRData);
 
@@ -246,6 +246,51 @@ export default function Tesseract() {
           light: "#ffffff",
         },
       });
+
+      // Modify the colors to have one half blue and the other half red
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      // Change dots' colors based on 45-degree line
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const index = (y * canvas.width + x) * 4;
+          if (
+            data[index] === 0 &&
+            data[index + 1] === 0 &&
+            data[index + 2] === 0
+          ) {
+            // Check for black (QR code dots)
+            // 700
+            if (x + y < canvas.width) {
+              // Change to blue
+              data[index] = 3; // Red
+              data[index + 1] = 4; // Green
+              data[index + 2] = 115; // Blue
+            } else {
+              // Change to red
+              data[index] = 224; // Red
+              data[index + 1] = 0; // Green
+              data[index + 2] = 1; // Blue
+            }
+
+            //500
+            // if (x + y < canvas.width) {
+            //   // Change to blue
+            //   data[index] = 2; // Red
+            //   data[index + 1] = 62; // Green
+            //   data[index + 2] = 208; // Blue
+            // } else {
+            //   // Change to red
+            //   data[index] = 224; // Red
+            //   data[index + 1] = 0; // Green
+            //   data[index + 2] = 1; // Blue
+            // }
+          }
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
 
       // Load logo image
       const img = await loadImage(logo);
@@ -270,7 +315,13 @@ export default function Tesseract() {
     const pngImg = base64;
     // const pngImg = `data:image/png;base64, ${pngUrl}`;
 
-    const qrCodeDataURL = await create("https://google.com", pngImg, 150, 50);
+    const qrCodeDataURL = await create(
+      // "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=drive_link",
+      "https://google.com",
+      pngImg,
+      150,
+      50
+    );
 
     // Use qrCodeDataURL as needed (e.g., display in an <img> tag or save to file)
     // console.log(qrCodeDataURL);
@@ -374,19 +425,19 @@ export default function Tesseract() {
     const url = URL.createObjectURL(blob);
 
     // Create a temporary link element
-    // const link = document.createElement("a");
-    // link.href = url;
-    // link.download = "pdf-lib_modification_example.pdf";
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "pdf-lib_modification_example.pdf";
 
     // Append the link to the body
-    // document.body.appendChild(link);
+    document.body.appendChild(link);
 
     // Trigger the download
-    // link.click();
+    link.click();
 
     // Clean up
-    // URL.revokeObjectURL(url);
-    // document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
     // End of download feature
 
     // PDF Viewer
