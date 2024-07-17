@@ -230,7 +230,7 @@ export default function Tesseract() {
 
     setOcrData(OCRData);
 
-    async function create(dataForQRcode, logo, qrWidth, logoWidth) {
+    async function create(dataForQRcode, logo, qrWidth) {
       const canvas = createCanvas(qrWidth, qrWidth);
       const ctx = canvas.getContext("2d");
 
@@ -277,12 +277,30 @@ export default function Tesseract() {
       // Load logo image
       const img = await loadImage(logo);
 
+      // const myData = "google.com";
+      const myData =
+        "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link";
+
       // Calculate center coordinates for the logo
+      // const centerX = (canvas.width - logoWidth) / 2;
+      // const centerY = (canvas.height - logoWidth) / 2;
+
+      // const logoWidth = 30; // Set a fixed width for the logo
+      // const logoHeight = 30; // Set a fixed height for the logo
+
+      // Determine the logo width based on the length of the data with a minimum size
+      const minLogoWidth = 30; // Minimum desired logo width
+      let logoWidth = myData.length * 2; // Calculate logo width based on the length of the data
+      if (logoWidth < minLogoWidth) {
+        logoWidth = minLogoWidth; // Enforce minimum logo width
+      }
+      const logoHeight = logoWidth; // Assuming the logo maintains aspect ratio
+
       const centerX = (canvas.width - logoWidth) / 2;
-      const centerY = (canvas.height - logoWidth) / 2;
+      const centerY = (canvas.height - logoHeight) / 2;
 
       // Draw logo onto the QR code
-      ctx.drawImage(img, centerX, centerY, logoWidth, logoWidth);
+      ctx.drawImage(img, centerX, centerY, logoWidth, logoHeight);
 
       return canvas.toDataURL("image/png");
     }
@@ -293,8 +311,8 @@ export default function Tesseract() {
     // const pngImg = `data:image/png;base64, ${pngUrl}`;
 
     const qrCodeDataURL = await create(
-      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=drive_link",
-      // "https://google.com",
+      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link",
+      // "google.com",
       pngImg,
       150,
       50
@@ -333,7 +351,7 @@ export default function Tesseract() {
     setQrImage(pngUrl);
 
     const pngImage = await newPdfDoc.embedPng(pngImageBytes);
-    const pngDims = pngImage.scale(0.2);
+    const pngDims = pngImage.scale(0.15);
 
     // Get the dimensions of the first page or document
     const pageWidth = firstPage.getWidth();
@@ -372,8 +390,14 @@ export default function Tesseract() {
     });
 
     // Calculate the position to place the image in the lower right corner
-    const imageWidth = pngDims.width;
-    const imageHeight = pngDims.height;
+    // const imageWidth = pngDims.width;
+    // const imageHeight = pngDims.height;
+    console.log("This is my image width/height", pngDims.width, pngDims.height);
+    const imageWidth = 31;
+    const imageHeight = 31;
+
+    // ---------------------------IMAGE HEIGHT/WIDTH -------------------------------
+
     const imageXMargin = 10;
     const imageYMargin = 18;
     const imageMargin = imageXMargin + imageYMargin;
