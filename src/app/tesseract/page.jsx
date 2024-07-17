@@ -346,7 +346,7 @@ export default function Tesseract() {
     const firstPage = rotatedPages[0];
 
     const pngUrl = qrCodeDataURL;
-    const pngImageBytes = await fetch(pngUrl).then(res => res.arrayBuffer());
+    const pngImageBytes = await fetch(pngUrl).then((res) => res.arrayBuffer());
 
     setQrImage(pngUrl);
 
@@ -438,12 +438,10 @@ export default function Tesseract() {
     // link.click();
     // link.click();
 
-    // // Clean up
+    // Clean up
     // URL.revokeObjectURL(url);
     // document.body.removeChild(link);
-    // URL.revokeObjectURL(url);
-    // document.body.removeChild(link);
-    // // End of download feature
+    // End of download feature
 
     // PDF Viewer
     setPdfViewer(blob, pageNumber);
@@ -594,6 +592,7 @@ export default function Tesseract() {
               ))}
             </div>
             <div style={{ border: "1px black solid" }}>
+              {/* <div ref={qrRef} /> */}
               {qrImage && (
                 <img src={qrImage} width="150px" height="150px" alt="QR Code" />
               )}
