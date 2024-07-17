@@ -317,7 +317,8 @@ export default function Tesseract() {
 
     const qrCodeDataURL = await create(
       // "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=drive_link",
-      "https://google.com",
+      // "https://google.com",
+      OCRData,
       pngImg,
       150,
       50
@@ -350,7 +351,13 @@ export default function Tesseract() {
     const rotatedPages = newPdfDoc.getPages();
     const firstPage = rotatedPages[0];
 
-    const pngImage = await newPdfDoc.embedPng(qrBuffer);
+    const pngUrl = qrCodeDataURL;
+    const pngImageBytes = await fetch(pngUrl).then((res) => res.arrayBuffer());
+
+    setQrImage(pngUrl);
+
+    const pngImage = await newPdfDoc.embedPng(pngImageBytes);
+
     const pngDims = pngImage.scale(0.2);
 
     // Get the dimensions of the first page or document
@@ -433,8 +440,6 @@ export default function Tesseract() {
     link.click();
 
     // Clean up
-    URL.revokeObjectURL(url);
-    document.body.removeChild(link);
     URL.revokeObjectURL(url);
     document.body.removeChild(link);
     // End of download feature
@@ -588,7 +593,10 @@ export default function Tesseract() {
               ))}
             </div>
             <div style={{ border: "1px black solid" }}>
-              <div ref={qrRef} />
+              {/* <div ref={qrRef} /> */}
+              {qrImage && (
+                <img src={qrImage} width="150px" height="150px" alt="QR Code" />
+              )}
             </div>
           </div>
           <h2>Document Preview with QR Code</h2>
