@@ -13,11 +13,9 @@ import QRCode from "qrcode";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 // UTILS
-import { extractFromInternal, pageRotation } from "../../utils";
+import { extractFromInternal, pageRotation, createQR } from "../../utils";
 
-// import logo from "../../assets/images/pagcor_logo.png";
-// import logo from "../../assets/images/pagcor_logo.jpg";
-import logo from "../../assets/images/pagcor.png";
+import logo from "../../assets/images/pagcor_logo.jpg";
 
 // import logo from "@/";
 import { createCanvas, loadImage } from "canvas";
@@ -35,6 +33,8 @@ export default function Tesseract() {
   const binarizedCanvasRef = useRef(null);
   const imageLoaded = useRef(false);
 
+  const qrRef = useRef(null);
+
   const pdfViewerRef = useRef(null);
   const [qrImage, setQrImage] = useState(null);
   const [ocrData, setOcrData] = useState([]);
@@ -44,10 +44,11 @@ export default function Tesseract() {
   const [base64, setBase64] = useState(null);
   const [qrOutput, setQrOutput] = useState(null);
 
+  const [myQr, setMyQr] = useState(null);
+
   useEffect(() => {
     if (file) {
       renderPdfToCanvas(file);
-      console.log(file);
     }
   }, [file]);
 
@@ -124,7 +125,6 @@ export default function Tesseract() {
     ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
 
     const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
-    console.log(imageData);
 
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = cropWidth;
@@ -334,29 +334,24 @@ export default function Tesseract() {
 
     const angles = pdfDoc.getPages().map((page, pageIndex) => {
       const rotation = page.getRotation().angle;
-      // console.log(`Before: Page ${pageIndex + 1} Rotation:`, rotation);
+
       return rotation;
     });
 
+    // -----------------------------------------------------------------------------
     // Create a new PDFDocument
     const newPdfDoc = await PDFDocument.create();
 
     await pageRotation(pdfDoc, newPdfDoc, angles);
 
+    // -----------------------------------------------------------------------------
+
     // Get the first page of the document
     const rotatedPages = newPdfDoc.getPages();
     const firstPage = rotatedPages[0];
 
-    // Embedding of QR
-    // Fetch the QR code image
-    // const pngUrl = dataUrl;
-    const pngUrl = qrCodeDataURL;
-    const pngImageBytes = await fetch(pngUrl).then((res) => res.arrayBuffer());
-
-    const pngImage = await newPdfDoc.embedPng(pngImageBytes);
-    const pngDims = pngImage.scale(0.25);
-
-    setQrImage(pngUrl);
+    const pngImage = await newPdfDoc.embedPng(qrBuffer);
+    const pngDims = pngImage.scale(0.2);
 
     // Get the dimensions of the first page or document
     const pageWidth = firstPage.getWidth();
@@ -420,7 +415,7 @@ export default function Tesseract() {
     // Convert Uint8Array to Blob
     const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-    // Download feature
+    //  Download feature
     // Create a URL for the Blob
     const url = URL.createObjectURL(blob);
 
@@ -431,11 +426,15 @@ export default function Tesseract() {
 
     // Append the link to the body
     document.body.appendChild(link);
+    document.body.appendChild(link);
 
     // Trigger the download
     link.click();
+    link.click();
 
     // Clean up
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
     document.body.removeChild(link);
     // End of download feature
@@ -525,6 +524,8 @@ export default function Tesseract() {
   return (
     <div className="flex flex-col items-center justify-center space-y-6">
       <div className="flex items-center space-x-4">
+        {myQr && <div ref={(ref) => myQr.append(ref)} />}
+
         <input
           type="file"
           className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -582,14 +583,12 @@ export default function Tesseract() {
             }}
           >
             <div style={{ border: "1px black solid", width: "75%" }}>
-              {ocrData.map((data, index) => (
+              {ocrData?.map((data, index) => (
                 <p key={index}>{data.data}</p>
               ))}
             </div>
             <div style={{ border: "1px black solid" }}>
-              {qrImage && (
-                <img src={qrImage} width="150px" height="150px" alt="QR Code" />
-              )}
+              <div ref={qrRef} />
             </div>
           </div>
           <h2>Document Preview with QR Code</h2>
@@ -603,8 +602,6 @@ export default function Tesseract() {
             <canvas
               ref={pdfViewerRef}
               id="theCanvas"
-              // width="100%"
-              // height="0"
               style={{
                 maxWidth: "100%",
                 // maxHeight: "auto",

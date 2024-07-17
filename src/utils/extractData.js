@@ -1,4 +1,4 @@
-export const extractFromInternal = (text) => {
+export const extractFromInternal = text => {
   const correspondenceType = [
     "Inter-office Memorandum",
     "Board Recommendation",
@@ -11,36 +11,66 @@ export const extractFromInternal = (text) => {
     "Others",
   ];
 
-  let documentType;
-  if (text.includes("Dear"))
-    documentType = correspondenceType.find(
-      (type) => type === "Business Letter"
-    );
-  else if (text.includes("Recommendation"))
-    documentType = correspondenceType.find(
-      (type) => type === "Board Recommendation"
-    );
-  else if (text.includes("MEMORANDUM"))
-    documentType = correspondenceType.find(
-      (type) => type === "Inter-office Memorandum"
-    );
-  else if (text.toLowerCase().includes("template"))
-    documentType = correspondenceType.find(
-      (type) => type === "Templated forms"
-    );
-  else documentType = correspondenceType.find((type) => type === "Others");
+  const documentAbbreviations = {
+    "Inter-office Memorandum": "IOM",
+    "Board Recommendation": "BR",
+    "Message from the CEO/COO/Board": "MC",
+    Announcement: "A",
+    "Templated forms": "TF",
+    "Business Letter": "BL",
+    "Letter from Government Agencies/Instrumentalities/GOCCs/LGUs": "LGA",
+    "Confidential letter": "CL",
+    Others: "O",
+    GOCC: "GOCC",
+    LGU: "LGU",
+    Instrumentalities: "I",
+  };
 
-  // DEPARTMENT
-  const departmentRegex = /^.*?Department$/im;
-  const departmentMatch = text.match(departmentRegex);
-  const departmentName = departmentMatch ? departmentMatch[0] : null;
-  const department = departmentName
-    ? departmentName
-        .split(" ")
-        .map((word) => word[0])
-        .join("")
-        .toUpperCase()
-    : null;
+  // DOCUMENT TYPES
+  let documentType;
+
+  if (text.includes("Dear") && text.includes("GOCC")) {
+    documentType = correspondenceType.find(
+      type =>
+        type === "Letter from Government Agencies/Instrumentalities/GOCCs/LGUs"
+    );
+  } else if (text.includes("Dear")) {
+    documentType = correspondenceType.find(type => type === "Business Letter");
+  } else if (text.includes("Recommendation")) {
+    documentType = correspondenceType.find(
+      type => type === "Board Recommendation"
+    );
+  } else if (text.includes("MEMORANDUM")) {
+    documentType = correspondenceType.find(
+      type => type === "Inter-office Memorandum"
+    );
+  } else if (text.toLowerCase().includes("template")) {
+    documentType = correspondenceType.find(type => type === "Templated forms");
+  } else {
+    documentType = correspondenceType.find(type => type === "Others");
+  }
+
+  // ABBREVIATED DOCUMENT TYPES
+  let documentTypeAbreviation;
+  if (text.includes("GOCC"))
+    documentTypeAbreviation = documentAbbreviations["GOCC"];
+  else if (text.includes("LGU"))
+    documentTypeAbreviation = documentAbbreviations["LGU"];
+  else if (text.includes("Instrumentalities"))
+    documentTypeAbreviation = documentAbbreviations["Instrumentalities"];
+  else documentTypeAbreviation = documentAbbreviations[documentType];
+
+  // // DEPARTMENT
+  // const departmentRegex = /^.*?Department$/im;
+  // const departmentMatch = text.match(departmentRegex);
+  // const departmentName = departmentMatch ? departmentMatch[0] : null;
+  // const department = departmentName
+  //   ? departmentName
+  //       .split(" ")
+  //       .map(word => word[0])
+  //       .join("")
+  //       .toUpperCase()
+  //   : null;
 
   // SUBJECT
   text = text.replace(/\n\n/g, " ");
@@ -91,12 +121,12 @@ export const extractFromInternal = (text) => {
   const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
   // Combine data of CTS
-  const ctsNo = `${department}-${documentType}-${splitDate}-0001`;
+  const ctsNo = `RMD-GOCC-07162024-0001`;
 
   const OCRData = [
     { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
     { data: `CTS No.: ${ctsNo}`, mode: "byte" },
-    { data: `\nDepartment: ${department}`, mode: "byte" },
+    { data: `\nDepartment: RMD`, mode: "byte" },
     { data: `\nDocument Type: ${documentType}`, mode: "byte" },
     { data: `\nSubject: ${subject}`, mode: "byte" },
   ];
@@ -104,7 +134,7 @@ export const extractFromInternal = (text) => {
   return OCRData;
 };
 
-export const extractFromExternal = (text) => {
+export const extractFromExternal = text => {
   let formNo, licensee, title;
 
   let cleanedText = text.replace(/CRM FORM/g, "");
