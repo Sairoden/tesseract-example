@@ -12,15 +12,8 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { createCanvas, loadImage } from "canvas";
 import QRCode from "qrcode";
 
-// COMPONENTS
-import { SupportingDocs } from "../../components";
-
 // UTILS
-import {
-  extractFromInternal,
-  pageRotation,
-  extractAcknowledgementReceipt,
-} from "../../utils";
+import { extractFromInternal, pageRotation, createQR } from "../../utils";
 
 // ASSETS
 import logo from "../../assets/images/pagcor.png";
@@ -38,6 +31,8 @@ export default function Tesseract() {
   const binarizedCanvasRef = useRef(null);
   const imageLoaded = useRef(false);
 
+  const qrRef = useRef(null);
+
   const pdfViewerRef = useRef(null);
   const [qrImage, setQrImage] = useState(null);
   const [ocrData, setOcrData] = useState([]);
@@ -46,7 +41,8 @@ export default function Tesseract() {
   const [pageNumber, setPageNumber] = useState(1);
   const [base64, setBase64] = useState(null);
   const [qrOutput, setQrOutput] = useState(null);
-  const [cts, setCts] = useState(null);
+
+  const [myQr, setMyQr] = useState(null);
 
   useEffect(() => {
     if (file) {
@@ -54,7 +50,7 @@ export default function Tesseract() {
     }
   }, [file]);
 
-  const handleFileChange = e => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     setInputFile(file);
 
@@ -66,7 +62,7 @@ export default function Tesseract() {
     reader.readAsArrayBuffer(file);
   };
 
-  const renderPdfToCanvas = async pdfData => {
+  const renderPdfToCanvas = async (pdfData) => {
     const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 2.0 });
@@ -87,7 +83,7 @@ export default function Tesseract() {
     imageLoaded.current = true;
   };
 
-  const handleTesseract = async img => {
+  const handleTesseract = async (img) => {
     try {
       setIsLoading(true);
 
@@ -97,9 +93,8 @@ export default function Tesseract() {
 
       if (data) {
         const OCRData = extractFromInternal(data.text);
-        // const acknowledgement = extractAcknowledgementReceipt(data.text);
 
-        // console.log(acknowledgement);
+        setText(data.text);
         setIsLoading(false);
         return OCRData;
       }
@@ -178,10 +173,10 @@ export default function Tesseract() {
   useEffect(() => {
     const imageUrl = logo.src;
     getDataUrl(imageUrl)
-      .then(dataUrl => {
+      .then((dataUrl) => {
         setBase64(dataUrl);
       })
-      .catch(error => {
+      .catch((error) => {
         console.log("Error converting to data URL:", error);
       });
   }, []);
@@ -190,7 +185,6 @@ export default function Tesseract() {
     if (!file) return;
 
     const binarizedDataUrl = preprocessAndRunOCR();
-<<<<<<< HEAD
     // const OCRData = await handleTesseract(binarizedDataUrl);
 
     // Hard coded OCR data
@@ -236,14 +230,12 @@ export default function Tesseract() {
       { data: `\nDepartment: ${department}`, mode: "byte" },
       { data: `\nDocument Type: ${docType}`, mode: "byte" },
     ];
-=======
-    const OCRData = await handleTesseract(binarizedDataUrl);
->>>>>>> 7c04ce797f751cfc4638d171ef4e5660f5dab035
 
     setOcrData(OCRData);
 
+    // let myData = "https://google.com";
     let myData =
-      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=sharing";
+      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link";
 
     async function create(dataForQRcode, logo, qrWidth) {
       const canvas = createCanvas(qrWidth, qrWidth);
@@ -322,7 +314,15 @@ export default function Tesseract() {
     const pngImg = base64;
     // const pngImg = `data:image/png;base64, ${pngUrl}`;
 
-    const qrCodeDataURL = await create(myData, pngImg, 150, 50);
+    const qrCodeDataURL = await create(
+      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link",
+      // "google.com",
+      // OCRData,
+      // myData,
+      pngImg,
+      150,
+      50
+    );
 
     // Use qrCodeDataURL as needed (e.g., display in an <img> tag or save to file)
     // console.log(qrCodeDataURL);
@@ -352,73 +352,28 @@ export default function Tesseract() {
     const firstPage = rotatedPages[0];
 
     const pngUrl = qrCodeDataURL;
-    const pngImageBytes = await fetch(pngUrl).then(res => res.arrayBuffer());
+    const pngImageBytes = await fetch(pngUrl).then((res) => res.arrayBuffer());
 
     setQrImage(pngUrl);
 
     const pngImage = await newPdfDoc.embedPng(pngImageBytes);
     const pngDims = pngImage.scale(0.15);
-
+    
     // Get the dimensions of the first page or document
     const pageWidth = firstPage.getWidth();
     const pageHeight = firstPage.getHeight();
-
-    // Get CTS Number
-    const textValue = OCRData[1].data.split(": ")[1];
-<<<<<<< HEAD
-    setCts(OCRData[1].data.split(": ")[1]);
-=======
-<<<<<<< HEAD
-=======
-
-    // console.log(T)
->>>>>>> 7c04ce797f751cfc4638d171ef4e5660f5dab035
->>>>>>> f306201e4e76fd4fe1b4bb99c3f5fb49a36c824e
-
-    // Embed text
-    // Normal font
-    // const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    // Bold font
-    const boldHelveticaFont = await newPdfDoc.embedFont(
-      StandardFonts.HelveticaBold
-    );
-
-    // ------------------------------------------------------------------------------------------
-
-    // Calculate the position to place the text in the upper right corner
-    const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 8);
-    const txtXMargin = 9;
-    const txtYMargin = 10;
-    const txtMargin = txtXMargin + txtYMargin;
-
-    const txtPosX = pageWidth - txtWidth - txtXMargin;
-    const txtPosY = txtYMargin;
-
-    newPdfDoc.getPages().map(async page => {
-      page.drawText(textValue, {
-        x: txtPosX,
-        y: txtPosY,
-        size: 8,
-        font: boldHelveticaFont,
-        color: rgb(0, 0, 0),
-      });
-    });
-
+    
     // Calculate the position to place the image in the lower right corner
-    // const imageWidth = pngDims.width;
-    // const imageHeight = pngDims.height;
-    const imageWidth = 35;
-    const imageHeight = 35;
-
-    // ---------------------------IMAGE HEIGHT/WIDTH -------------------------------
-
-    const imageXMargin = 10;
-    const imageYMargin = 18;
-    const imageMargin = imageXMargin + imageYMargin;
-
+    console.log("This is my image width/height", pngDims.width, pngDims.height);
+    const imageWidth = 90;
+    const imageHeight = 90;
+    
+    const imageXMargin = 77;
+    const imageYMargin = 103;
+    
     const imagePosX = pageWidth - imageWidth - imageXMargin;
     const imagePosY = imageYMargin;
-
+    
     // Draw the image on the first page of the document
     firstPage.drawImage(pngImage, {
       x: imagePosX,
@@ -426,8 +381,61 @@ export default function Tesseract() {
       width: imageWidth,
       height: imageHeight,
     });
+    
+    // Get CTS Number
+    const textValue = OCRData[1].data.split(": ")[1];
+    // const textValue = `OCCEO-EGLD-415-${OCRData[1].data.split(": ")[1]}`;
+    const rectangleTitle = "In following-up, please cite CTS ref #";
+    
+    // Embed text
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldHelveticaFont = await newPdfDoc.embedFont(StandardFonts.HelveticaBold);
+    
+    // Calculate the position to place the rectangle title in the rectangle
+    const rectangleTitleWidth = helveticaFont.widthOfTextAtSize(rectangleTitle, 10);
+    const ctsTextWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 10);
+    const rectangleWidth = Math.max(rectangleTitleWidth, ctsTextWidth) + 16; // Add margin
+    const rectangleHeight = 35;
+    
+    const qrCenterX = imagePosX + imageWidth / 2;
+    const rectanglePosX = qrCenterX - rectangleWidth / 2;
+    const rectanglePosY = imagePosY - 37;
+    
+    // rectangle
+    firstPage.drawRectangle({
+      x: rectanglePosX,
+      y: rectanglePosY,
+      width: rectangleWidth,
+      height: rectangleHeight,
+      borderColor: rgb(0, 0, 0),
+      borderWidth: 1,
+    });
+    
+    const rectangleTitlePosX = rectanglePosX + (rectangleWidth - rectangleTitleWidth) / 2;
+    const rectangleTitlePosY = rectanglePosY + 20;
 
-    // ------------------------------------------------------------------------------------------
+    // rectangle title
+    firstPage.drawText(rectangleTitle, {
+      x: rectangleTitlePosX,
+      y: rectangleTitlePosY,
+      size: 10,
+      font: helveticaFont,
+      color: rgb(0, 0, 0),
+    });
+    
+    // cts text properties
+    const txtPosX = rectanglePosX + (rectangleWidth - ctsTextWidth) / 2; // Center the text within the rectangle
+    const txtPosY = rectanglePosY + 5;
+    
+    // cts text
+    firstPage.drawText(textValue, {
+      x: txtPosX,
+      y: txtPosY,
+      size: 10,
+      font: boldHelveticaFont,
+      color: rgb(0, 0, 0),
+    });
+     
 
     // Serialize the PDFDocument to bytes (a Uint8Array)
     const pdfBytes = await newPdfDoc.save();
@@ -435,28 +443,25 @@ export default function Tesseract() {
     // Convert Uint8Array to Blob
     const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-    console.log("THIS IS MY CTS");
-    console.log(cts);
-
-    // //  Download feature
-    // // Create a URL for the Blob
+    //  Download feature
+    // Create a URL for the Blob
     // const url = URL.createObjectURL(blob);
 
-    // // Create a temporary link element
+    // Create a temporary link element
     // const link = document.createElement("a");
     // link.href = url;
-    // link.download = `${textValue}.pdf`;
+    // link.download = "pdf-lib_modification_example.pdf";
 
-    // // Append the link to the body
+    // Append the link to the body
     // document.body.appendChild(link);
 
-    // // Trigger the download
+    // Trigger the download
     // link.click();
 
-    // // Clean up
+    // Clean up
     // URL.revokeObjectURL(url);
     // document.body.removeChild(link);
-    // // End of download feature
+    // End of download feature
 
     // PDF Viewer
     setPdfViewer(blob, pageNumber);
@@ -464,8 +469,6 @@ export default function Tesseract() {
     // QR Viewer
     setModifiedPDF(blob);
   };
-
-  console.log("THIS IS MY CTS", cts);
 
   const getTotalPages = async () => {
     if (!modifiedPDF) return;
@@ -545,6 +548,8 @@ export default function Tesseract() {
   return (
     <div className="flex flex-col items-center justify-center space-y-6">
       <div className="flex items-center space-x-4">
+        {myQr && <div ref={(ref) => myQr.append(ref)} />}
+
         <input
           type="file"
           className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -636,8 +641,6 @@ export default function Tesseract() {
           <button onClick={handleNextClick}>Next</button>
         </div>
       )}
-
-      <SupportingDocs  />
     </div>
   );
 }
