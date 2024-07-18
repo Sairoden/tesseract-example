@@ -1,3 +1,7 @@
+export const extractAcknowledgementReceipt = text => {
+  return text;
+};
+
 export const extractFromInternal = text => {
   const correspondenceType = [
     "Inter-office Memorandum",

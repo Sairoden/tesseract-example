@@ -12,8 +12,15 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { createCanvas, loadImage } from "canvas";
 import QRCode from "qrcode";
 
+// COMPONENTS
+import { SupportingDocs } from "../../components";
+
 // UTILS
-import { extractFromInternal, pageRotation, createQR } from "../../utils";
+import {
+  extractFromInternal,
+  pageRotation,
+  extractAcknowledgementReceipt,
+} from "../../utils";
 
 // ASSETS
 import logo from "../../assets/images/pagcor.png";
@@ -31,8 +38,6 @@ export default function Tesseract() {
   const binarizedCanvasRef = useRef(null);
   const imageLoaded = useRef(false);
 
-  const qrRef = useRef(null);
-
   const pdfViewerRef = useRef(null);
   const [qrImage, setQrImage] = useState(null);
   const [ocrData, setOcrData] = useState([]);
@@ -41,8 +46,7 @@ export default function Tesseract() {
   const [pageNumber, setPageNumber] = useState(1);
   const [base64, setBase64] = useState(null);
   const [qrOutput, setQrOutput] = useState(null);
-
-  const [myQr, setMyQr] = useState(null);
+  const [cts, setCts] = useState(null);
 
   useEffect(() => {
     if (file) {
@@ -93,8 +97,9 @@ export default function Tesseract() {
 
       if (data) {
         const OCRData = extractFromInternal(data.text);
+        // const acknowledgement = extractAcknowledgementReceipt(data.text);
 
-        setText(data.text);
+        // console.log(acknowledgement);
         setIsLoading(false);
         return OCRData;
       }
@@ -189,9 +194,8 @@ export default function Tesseract() {
 
     setOcrData(OCRData);
 
-    // let myData = "https://google.com";
     let myData =
-      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link";
+      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=sharing";
 
     async function create(dataForQRcode, logo, qrWidth) {
       const canvas = createCanvas(qrWidth, qrWidth);
@@ -270,15 +274,7 @@ export default function Tesseract() {
     const pngImg = base64;
     // const pngImg = `data:image/png;base64, ${pngUrl}`;
 
-    const qrCodeDataURL = await create(
-      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link",
-      // "google.com",
-      // OCRData,
-      // myData,
-      pngImg,
-      150,
-      50
-    );
+    const qrCodeDataURL = await create(myData, pngImg, 150, 50);
 
     // Use qrCodeDataURL as needed (e.g., display in an <img> tag or save to file)
     // console.log(qrCodeDataURL);
@@ -319,10 +315,9 @@ export default function Tesseract() {
     const pageWidth = firstPage.getWidth();
     const pageHeight = firstPage.getHeight();
 
-    // Get CST Number
+    // Get CTS Number
     const textValue = OCRData[1].data.split(": ")[1];
-
-    // console.log(T)
+    setCts(OCRData[1].data.split(": ")[1]);
 
     // Embed text
     // Normal font
@@ -356,7 +351,6 @@ export default function Tesseract() {
     // Calculate the position to place the image in the lower right corner
     // const imageWidth = pngDims.width;
     // const imageHeight = pngDims.height;
-    console.log("This is my image width/height", pngDims.width, pngDims.height);
     const imageWidth = 35;
     const imageHeight = 35;
 
@@ -385,25 +379,28 @@ export default function Tesseract() {
     // Convert Uint8Array to Blob
     const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-    //  Download feature
-    // Create a URL for the Blob
-    const url = URL.createObjectURL(blob);
+    console.log("THIS IS MY CTS");
+    console.log(cts);
 
-    // Create a temporary link element
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "pdf-lib_modification_example.pdf";
+    // //  Download feature
+    // // Create a URL for the Blob
+    // const url = URL.createObjectURL(blob);
 
-    // Append the link to the body
-    document.body.appendChild(link);
+    // // Create a temporary link element
+    // const link = document.createElement("a");
+    // link.href = url;
+    // link.download = `${textValue}.pdf`;
 
-    // Trigger the download
-    link.click();
+    // // Append the link to the body
+    // document.body.appendChild(link);
 
-    // Clean up
-    URL.revokeObjectURL(url);
-    document.body.removeChild(link);
-    // End of download feature
+    // // Trigger the download
+    // link.click();
+
+    // // Clean up
+    // URL.revokeObjectURL(url);
+    // document.body.removeChild(link);
+    // // End of download feature
 
     // PDF Viewer
     setPdfViewer(blob, pageNumber);
@@ -411,6 +408,8 @@ export default function Tesseract() {
     // QR Viewer
     setModifiedPDF(blob);
   };
+
+  console.log("THIS IS MY CTS", cts);
 
   const getTotalPages = async () => {
     if (!modifiedPDF) return;
@@ -490,8 +489,6 @@ export default function Tesseract() {
   return (
     <div className="flex flex-col items-center justify-center space-y-6">
       <div className="flex items-center space-x-4">
-        {myQr && <div ref={ref => myQr.append(ref)} />}
-
         <input
           type="file"
           className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -583,6 +580,8 @@ export default function Tesseract() {
           <button onClick={handleNextClick}>Next</button>
         </div>
       )}
+
+      <SupportingDocs  />
     </div>
   );
 }
