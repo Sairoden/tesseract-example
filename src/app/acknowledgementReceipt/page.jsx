@@ -408,7 +408,7 @@ export default function Tesseract() {
       width: rectangleWidth,
       height: rectangleHeight,
       borderColor: rgb(0, 0, 0),
-      borderWidth: 1,
+      borderWidth: .5,
     });
     
     const rectangleTitlePosX = rectanglePosX + (rectangleWidth - rectangleTitleWidth) / 2;
@@ -445,22 +445,22 @@ export default function Tesseract() {
 
     //  Download feature
     // Create a URL for the Blob
-    // const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
 
     // Create a temporary link element
-    // const link = document.createElement("a");
-    // link.href = url;
-    // link.download = "pdf-lib_modification_example.pdf";
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "pdf-lib_modification_example.pdf";
 
     // Append the link to the body
-    // document.body.appendChild(link);
+    document.body.appendChild(link);
 
     // Trigger the download
-    // link.click();
+    link.click();
 
     // Clean up
-    // URL.revokeObjectURL(url);
-    // document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
     // End of download feature
 
     // PDF Viewer
