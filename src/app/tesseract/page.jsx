@@ -50,7 +50,7 @@ export default function Tesseract() {
     }
   }, [file]);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = e => {
     const file = e.target.files[0];
     setInputFile(file);
 
@@ -62,7 +62,7 @@ export default function Tesseract() {
     reader.readAsArrayBuffer(file);
   };
 
-  const renderPdfToCanvas = async (pdfData) => {
+  const renderPdfToCanvas = async pdfData => {
     const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 2.0 });
@@ -83,7 +83,7 @@ export default function Tesseract() {
     imageLoaded.current = true;
   };
 
-  const handleTesseract = async (img) => {
+  const handleTesseract = async img => {
     try {
       setIsLoading(true);
 
@@ -173,10 +173,10 @@ export default function Tesseract() {
   useEffect(() => {
     const imageUrl = logo.src;
     getDataUrl(imageUrl)
-      .then((dataUrl) => {
+      .then(dataUrl => {
         setBase64(dataUrl);
       })
-      .catch((error) => {
+      .catch(error => {
         console.log("Error converting to data URL:", error);
       });
   }, []);
@@ -185,6 +185,7 @@ export default function Tesseract() {
     if (!file) return;
 
     const binarizedDataUrl = preprocessAndRunOCR();
+<<<<<<< HEAD
     // const OCRData = await handleTesseract(binarizedDataUrl);
 
     // Hard coded OCR data
@@ -230,6 +231,9 @@ export default function Tesseract() {
       { data: `\nDepartment: ${department}`, mode: "byte" },
       { data: `\nDocument Type: ${docType}`, mode: "byte" },
     ];
+=======
+    const OCRData = await handleTesseract(binarizedDataUrl);
+>>>>>>> 7c04ce797f751cfc4638d171ef4e5660f5dab035
 
     setOcrData(OCRData);
 
@@ -352,7 +356,7 @@ export default function Tesseract() {
     const firstPage = rotatedPages[0];
 
     const pngUrl = qrCodeDataURL;
-    const pngImageBytes = await fetch(pngUrl).then((res) => res.arrayBuffer());
+    const pngImageBytes = await fetch(pngUrl).then(res => res.arrayBuffer());
 
     setQrImage(pngUrl);
 
@@ -365,6 +369,11 @@ export default function Tesseract() {
 
     // Get CST Number
     const textValue = OCRData[1].data.split(": ")[1];
+<<<<<<< HEAD
+=======
+
+    // console.log(T)
+>>>>>>> 7c04ce797f751cfc4638d171ef4e5660f5dab035
 
     // Embed text
     // Normal font
@@ -385,7 +394,7 @@ export default function Tesseract() {
     const txtPosX = pageWidth - txtWidth - txtXMargin;
     const txtPosY = txtYMargin;
 
-    newPdfDoc.getPages().map(async (page) => {
+    newPdfDoc.getPages().map(async page => {
       page.drawText(textValue, {
         x: txtPosX,
         y: txtPosY,
@@ -399,8 +408,8 @@ export default function Tesseract() {
     // const imageWidth = pngDims.width;
     // const imageHeight = pngDims.height;
     console.log("This is my image width/height", pngDims.width, pngDims.height);
-    const imageWidth = 31;
-    const imageHeight = 31;
+    const imageWidth = 35;
+    const imageHeight = 35;
 
     // ---------------------------IMAGE HEIGHT/WIDTH -------------------------------
 
@@ -532,7 +541,7 @@ export default function Tesseract() {
   return (
     <div className="flex flex-col items-center justify-center space-y-6">
       <div className="flex items-center space-x-4">
-        {myQr && <div ref={(ref) => myQr.append(ref)} />}
+        {myQr && <div ref={ref => myQr.append(ref)} />}
 
         <input
           type="file"
