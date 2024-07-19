@@ -13,7 +13,11 @@ import { createCanvas, loadImage } from "canvas";
 import QRCode from "qrcode";
 
 // UTILS
-import { extractFromInternal, pageRotation, createQR } from "../../utils";
+import {
+  extractFromInternal,
+  pageRotation,
+  extractAcknowledgementReceipt,
+} from "../../utils";
 
 // ASSETS
 import logo from "../../assets/images/pagcor.png";
@@ -30,6 +34,9 @@ export default function Tesseract() {
   const canvasRef = useRef(null);
   const binarizedCanvasRef = useRef(null);
   const imageLoaded = useRef(false);
+  const [sample1, setSample1] = useState("");
+  const [sample2, setSample2] = useState("");
+  // const [documentType, setDocumentType] = useState("");
 
   const qrRef = useRef(null);
 
@@ -50,7 +57,7 @@ export default function Tesseract() {
     }
   }, [file]);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = e => {
     const file = e.target.files[0];
     setInputFile(file);
 
@@ -62,7 +69,7 @@ export default function Tesseract() {
     reader.readAsArrayBuffer(file);
   };
 
-  const renderPdfToCanvas = async (pdfData) => {
+  const renderPdfToCanvas = async pdfData => {
     const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 2.0 });
@@ -83,7 +90,7 @@ export default function Tesseract() {
     imageLoaded.current = true;
   };
 
-  const handleTesseract = async (img) => {
+  const handleTesseract = async img => {
     try {
       setIsLoading(true);
 
@@ -93,10 +100,26 @@ export default function Tesseract() {
 
       if (data) {
         const OCRData = extractFromInternal(data.text);
+        const acknowledgeData = extractAcknowledgementReceipt(data.text);
 
         setText(data.text);
         setIsLoading(false);
-        return OCRData;
+
+        if (OCRData[1].data.includes("AR")) {
+          // Append the document type to the OCRData
+          let parts = OCRData[1].data.split(": ");
+          let idParts = parts[1].split("-");
+
+          // Inserting the documentType (GOCC) in the correct place
+          idParts.splice(2, 0, acknowledgeData.documentType);
+          parts[1] = idParts.join("-");
+
+          OCRData[1].data = parts.join(": ");
+        }
+
+        console.log(OCRData);
+
+        return { OCRData, acknowledgeData };
       }
 
       setIsLoading(false);
@@ -173,10 +196,10 @@ export default function Tesseract() {
   useEffect(() => {
     const imageUrl = logo.src;
     getDataUrl(imageUrl)
-      .then((dataUrl) => {
+      .then(dataUrl => {
         setBase64(dataUrl);
       })
-      .catch((error) => {
+      .catch(error => {
         console.log("Error converting to data URL:", error);
       });
   }, []);
@@ -185,51 +208,54 @@ export default function Tesseract() {
     if (!file) return;
 
     const binarizedDataUrl = preprocessAndRunOCR();
-    // const OCRData = await handleTesseract(binarizedDataUrl);
+    const { OCRData, acknowledgeData } = await handleTesseract(
+      binarizedDataUrl
+    );
 
-    // Hard coded OCR data
-    const licensee = "Juan Dela Cruz";
+    // // Hard coded OCR data
+    // const licensee = "Juan Dela Cruz";
 
-    // Data of formatted date and time
-    const currentDate = new Date();
+    // // Data of formatted date and time
+    // const currentDate = new Date();
 
-    // Format date part (MM/DD/YYYY)
-    const formattedDate = currentDate.toLocaleDateString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "numeric",
-    });
+    // // Format date part (MM/DD/YYYY)
+    // const formattedDate = currentDate.toLocaleDateString("en-US", {
+    //   month: "2-digit",
+    //   day: "2-digit",
+    //   year: "numeric",
+    // });
 
-    // Format time part (hh:mm AM/PM)
-    const hours = currentDate.getHours();
-    const minutes = currentDate.getMinutes();
-    const ampm = hours >= 12 ? "PM" : "AM";
-    const formattedTime = `${hours === 12 ? 12 : hours % 12}:${minutes
-      .toString()
-      .padStart(2, "0")} ${ampm}`;
+    // // Format time part (hh:mm AM/PM)
+    // const hours = currentDate.getHours();
+    // const minutes = currentDate.getMinutes();
+    // const ampm = hours >= 12 ? "PM" : "AM";
+    // const formattedTime = `${hours === 12 ? 12 : hours % 12}:${minutes
+    //   .toString()
+    //   .padStart(2, "0")} ${ampm}`;
 
-    // Combine date and time parts
-    const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
+    // // Combine date and time parts
+    // const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
 
-    // Data of CTS
-    const dateArray = formattedDate.split("/");
-    const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
+    // // Data of CTS
+    // const dateArray = formattedDate.split("/");
+    // const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
-    const formNo = "EGLD-415";
-    const formNoArray = formNo.split("-");
-    const department = formNoArray[0];
-    const docType = "APPLICATION FORM FOR THE ESTABLISHMENT OF GAMING VENUE";
+    // const formNo = "EGLD-415";
+    // const formNoArray = formNo.split("-");
+    // const department = formNoArray[0];
+    // const docType = "APPLICATION FORM FOR THE ESTABLISHMENT OF GAMING VENUE";
 
-    // Combine data of CTS
-    const ctsNo = `${formNo}-${splitDate}-0001`;
+    // // Combine data of CTS
+    // // const ctsNo = `${formNo}-${splitDate}-0001`;
+    // const ctsNo = "OCCEO-GOCC-07172024-0001";
 
-    const OCRData = [
-      { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
-      { data: `Reference No.: ${ctsNo}`, mode: "byte" },
-      { data: `\nLicensee/Applicant: ${licensee}`, mode: "byte" },
-      { data: `\nDepartment: ${department}`, mode: "byte" },
-      { data: `\nDocument Type: ${docType}`, mode: "byte" },
-    ];
+    // const OCRData = [
+    //   { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
+    //   { data: `Reference No.: ${ctsNo}`, mode: "byte" },
+    //   { data: `\nLicensee/Applicant: ${licensee}`, mode: "byte" },
+    //   { data: `\nDepartment: ${department}`, mode: "byte" },
+    //   { data: `\nDocument Type: ${docType}`, mode: "byte" },
+    // ];
 
     setOcrData(OCRData);
 
@@ -309,23 +335,17 @@ export default function Tesseract() {
       return canvas.toDataURL("image/png");
     }
 
-    // console.log(pngUrl);
-
     const pngImg = base64;
     // const pngImg = `data:image/png;base64, ${pngUrl}`;
 
     const qrCodeDataURL = await create(
       "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link",
-      // "google.com",
-      // OCRData,
-      // myData,
       pngImg,
       150,
       50
     );
 
     // Use qrCodeDataURL as needed (e.g., display in an <img> tag or save to file)
-    // console.log(qrCodeDataURL);
     setQrOutput(qrCodeDataURL);
 
     const pdfBuffer = await inputFile.arrayBuffer();
@@ -352,28 +372,27 @@ export default function Tesseract() {
     const firstPage = rotatedPages[0];
 
     const pngUrl = qrCodeDataURL;
-    const pngImageBytes = await fetch(pngUrl).then((res) => res.arrayBuffer());
+    const pngImageBytes = await fetch(pngUrl).then(res => res.arrayBuffer());
 
     setQrImage(pngUrl);
 
     const pngImage = await newPdfDoc.embedPng(pngImageBytes);
     const pngDims = pngImage.scale(0.15);
-    
+
     // Get the dimensions of the first page or document
     const pageWidth = firstPage.getWidth();
     const pageHeight = firstPage.getHeight();
-    
+
     // Calculate the position to place the image in the lower right corner
-    console.log("This is my image width/height", pngDims.width, pngDims.height);
     const imageWidth = 90;
     const imageHeight = 90;
-    
+
     const imageXMargin = 77;
     const imageYMargin = 103;
-    
+
     const imagePosX = pageWidth - imageWidth - imageXMargin;
     const imagePosY = imageYMargin;
-    
+
     // Draw the image on the first page of the document
     firstPage.drawImage(pngImage, {
       x: imagePosX,
@@ -381,26 +400,34 @@ export default function Tesseract() {
       width: imageWidth,
       height: imageHeight,
     });
-    
+
     // Get CTS Number
-    const textValue = OCRData[1].data.split(": ")[1];
-    // const textValue = `OCCEO-EGLD-415-${OCRData[1].data.split(": ")[1]}`;
+    // const textValue = referenceNo;
+    const acknowledgeValue = acknowledgeData.referenceNo;
+    const ocrValue = OCRData[1].data.split(": ")[1];
+
+    const textValue = acknowledgeValue ? acknowledgeValue : ocrValue;
     const rectangleTitle = "In following-up, please cite CTS ref #";
-    
+
     // Embed text
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const boldHelveticaFont = await newPdfDoc.embedFont(StandardFonts.HelveticaBold);
-    
+    const boldHelveticaFont = await newPdfDoc.embedFont(
+      StandardFonts.HelveticaBold
+    );
+
     // Calculate the position to place the rectangle title in the rectangle
-    const rectangleTitleWidth = helveticaFont.widthOfTextAtSize(rectangleTitle, 10);
+    const rectangleTitleWidth = helveticaFont.widthOfTextAtSize(
+      rectangleTitle,
+      10
+    );
     const ctsTextWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 10);
     const rectangleWidth = Math.max(rectangleTitleWidth, ctsTextWidth) + 16; // Add margin
     const rectangleHeight = 35;
-    
+
     const qrCenterX = imagePosX + imageWidth / 2;
     const rectanglePosX = qrCenterX - rectangleWidth / 2;
     const rectanglePosY = imagePosY - 37;
-    
+
     // rectangle
     firstPage.drawRectangle({
       x: rectanglePosX,
@@ -408,10 +435,11 @@ export default function Tesseract() {
       width: rectangleWidth,
       height: rectangleHeight,
       borderColor: rgb(0, 0, 0),
-      borderWidth: .5,
+      borderWidth: 0.5,
     });
-    
-    const rectangleTitlePosX = rectanglePosX + (rectangleWidth - rectangleTitleWidth) / 2;
+
+    const rectangleTitlePosX =
+      rectanglePosX + (rectangleWidth - rectangleTitleWidth) / 2;
     const rectangleTitlePosY = rectanglePosY + 20;
 
     // rectangle title
@@ -422,11 +450,11 @@ export default function Tesseract() {
       font: helveticaFont,
       color: rgb(0, 0, 0),
     });
-    
+
     // cts text properties
     const txtPosX = rectanglePosX + (rectangleWidth - ctsTextWidth) / 2; // Center the text within the rectangle
     const txtPosY = rectanglePosY + 5;
-    
+
     // cts text
     firstPage.drawText(textValue, {
       x: txtPosX,
@@ -435,7 +463,6 @@ export default function Tesseract() {
       font: boldHelveticaFont,
       color: rgb(0, 0, 0),
     });
-     
 
     // Serialize the PDFDocument to bytes (a Uint8Array)
     const pdfBytes = await newPdfDoc.save();
@@ -548,7 +575,7 @@ export default function Tesseract() {
   return (
     <div className="flex flex-col items-center justify-center space-y-6">
       <div className="flex items-center space-x-4">
-        {myQr && <div ref={(ref) => myQr.append(ref)} />}
+        {myQr && <div ref={ref => myQr.append(ref)} />}
 
         <input
           type="file"

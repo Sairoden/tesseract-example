@@ -1,5 +1,24 @@
 export const extractAcknowledgementReceipt = text => {
-  return text;
+  // Regular expression to match the document reference number
+  const referenceNumberRegex = /Document Reference No:\s*([a-zA-Z0-9-]+)/i;
+  const match = text.match(referenceNumberRegex);
+
+  if (match && match[1]) {
+    const documentReferenceNumber = match[1];
+    const parts = documentReferenceNumber.split("-");
+
+    if (parts.length >= 2) {
+      return {
+        referenceNo: documentReferenceNumber,
+        documentType: parts[1], // Return the second part after splitting by hyphen
+      };
+    }
+  }
+
+  return {
+    referenceNo: null,
+    documentType: null,
+  };
 };
 
 export const extractFromInternal = text => {
@@ -13,6 +32,7 @@ export const extractFromInternal = text => {
     "Letter from Government Agencies/Instrumentalities/GOCCs/LGUs",
     "Confidential letter",
     "Others",
+    "Acknowledgement Receipt", // Added Acknowledgement Receipt
   ];
 
   const documentAbbreviations = {
@@ -28,12 +48,17 @@ export const extractFromInternal = text => {
     GOCC: "GOCC",
     LGU: "LGU",
     Instrumentalities: "I",
+    "Acknowledgement Receipt": "AR", // Added abbreviation for Acknowledgement Receipt
   };
 
   // DOCUMENT TYPES
   let documentType;
 
-  if (text.includes("Dear") && text.includes("GOCC")) {
+  if (text.toUpperCase().includes("ACKNOWLEDGEMENT RECEIPT")) {
+    documentType = correspondenceType.find(
+      type => type === "Acknowledgement Receipt"
+    );
+  } else if (text.includes("Dear") && text.includes("GOCC")) {
     documentType = correspondenceType.find(
       type =>
         type === "Letter from Government Agencies/Instrumentalities/GOCCs/LGUs"
@@ -56,25 +81,15 @@ export const extractFromInternal = text => {
 
   // ABBREVIATED DOCUMENT TYPES
   let documentTypeAbreviation;
-  if (text.includes("GOCC"))
+  if (text.toUpperCase().includes("ACKNOWLEDGEMENT RECEIPT"))
+    documentTypeAbreviation = documentAbbreviations["Acknowledgement Receipt"];
+  else if (text.includes("GOCC"))
     documentTypeAbreviation = documentAbbreviations["GOCC"];
   else if (text.includes("LGU"))
     documentTypeAbreviation = documentAbbreviations["LGU"];
   else if (text.includes("Instrumentalities"))
     documentTypeAbreviation = documentAbbreviations["Instrumentalities"];
   else documentTypeAbreviation = documentAbbreviations[documentType];
-
-  // // DEPARTMENT
-  // const departmentRegex = /^.*?Department$/im;
-  // const departmentMatch = text.match(departmentRegex);
-  // const departmentName = departmentMatch ? departmentMatch[0] : null;
-  // const department = departmentName
-  //   ? departmentName
-  //       .split(" ")
-  //       .map(word => word[0])
-  //       .join("")
-  //       .toUpperCase()
-  //   : null;
 
   // SUBJECT
   text = text.replace(/\n\n/g, " ");
@@ -124,13 +139,15 @@ export const extractFromInternal = text => {
   const dateArray = formattedDate.split("/");
   const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
+  console.log("THIS IS MY DOCUMENT TYPE ABBREVIATION", documentTypeAbreviation);
+
   // Combine data of CTS
-  const ctsNo = `RMD-${documentTypeAbreviation}-${splitDate}-0001`;
+  const ctsNo = `CRA-${documentTypeAbreviation}-${splitDate}-0001`;
 
   const OCRData = [
     { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
     { data: `CTS No.: ${ctsNo}`, mode: "byte" },
-    { data: `\nDepartment: RMD`, mode: "byte" },
+    { data: `\nDepartment: OCCEO`, mode: "byte" },
     { data: `\nDocument Type: ${documentType}`, mode: "byte" },
     { data: `\nSubject: ${subject}`, mode: "byte" },
   ];

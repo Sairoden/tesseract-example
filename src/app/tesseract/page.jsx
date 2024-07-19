@@ -190,55 +190,7 @@ export default function Tesseract() {
     if (!file) return;
 
     const binarizedDataUrl = preprocessAndRunOCR();
-<<<<<<< HEAD
-    // const OCRData = await handleTesseract(binarizedDataUrl);
-
-    // Hard coded OCR data
-    const licensee = "Juan Dela Cruz";
-
-    // Data of formatted date and time
-    const currentDate = new Date();
-
-    // Format date part (MM/DD/YYYY)
-    const formattedDate = currentDate.toLocaleDateString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "numeric",
-    });
-
-    // Format time part (hh:mm AM/PM)
-    const hours = currentDate.getHours();
-    const minutes = currentDate.getMinutes();
-    const ampm = hours >= 12 ? "PM" : "AM";
-    const formattedTime = `${hours === 12 ? 12 : hours % 12}:${minutes
-      .toString()
-      .padStart(2, "0")} ${ampm}`;
-
-    // Combine date and time parts
-    const formattedDateTime = `${formattedDate}, ${formattedTime}`; // Example output: "05/15/2024, 10:48 AM"
-
-    // Data of CTS
-    const dateArray = formattedDate.split("/");
-    const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
-
-    const formNo = "EGLD-415";
-    const formNoArray = formNo.split("-");
-    const department = formNoArray[0];
-    const docType = "APPLICATION FORM FOR THE ESTABLISHMENT OF GAMING VENUE";
-
-    // Combine data of CTS
-    const ctsNo = `${formNo}-${splitDate}-0001`;
-
-    const OCRData = [
-      { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
-      { data: `Reference No.: ${ctsNo}`, mode: "byte" },
-      { data: `\nLicensee/Applicant: ${licensee}`, mode: "byte" },
-      { data: `\nDepartment: ${department}`, mode: "byte" },
-      { data: `\nDocument Type: ${docType}`, mode: "byte" },
-    ];
-=======
     const OCRData = await handleTesseract(binarizedDataUrl);
->>>>>>> 7c04ce797f751cfc4638d171ef4e5660f5dab035
 
     setOcrData(OCRData);
 
@@ -365,15 +317,8 @@ export default function Tesseract() {
 
     // Get CTS Number
     const textValue = OCRData[1].data.split(": ")[1];
-<<<<<<< HEAD
-    setCts(OCRData[1].data.split(": ")[1]);
-=======
-<<<<<<< HEAD
-=======
 
-    // console.log(T)
->>>>>>> 7c04ce797f751cfc4638d171ef4e5660f5dab035
->>>>>>> f306201e4e76fd4fe1b4bb99c3f5fb49a36c824e
+    setCts(OCRData[1].data.split(": ")[1]);
 
     // Embed text
     // Normal font
@@ -435,9 +380,6 @@ export default function Tesseract() {
     // Convert Uint8Array to Blob
     const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
 
-    console.log("THIS IS MY CTS");
-    console.log(cts);
-
     // //  Download feature
     // // Create a URL for the Blob
     // const url = URL.createObjectURL(blob);
@@ -464,8 +406,6 @@ export default function Tesseract() {
     // QR Viewer
     setModifiedPDF(blob);
   };
-
-  console.log("THIS IS MY CTS", cts);
 
   const getTotalPages = async () => {
     if (!modifiedPDF) return;
@@ -637,7 +577,7 @@ export default function Tesseract() {
         </div>
       )}
 
-      <SupportingDocs  />
+      {cts && <SupportingDocs cts={cts} qrImage={qrImage} />}
     </div>
   );
 }
