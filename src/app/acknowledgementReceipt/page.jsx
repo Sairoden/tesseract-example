@@ -215,13 +215,14 @@ export default function Tesseract() {
     const dateArray = formattedDate.split("/");
     const splitDate = `${dateArray[0]}${dateArray[1]}${dateArray[2]}`;
 
-    const formNo = "EGLD-415";
+    // const formNo = "EGLD-415";
+    const formNo = "OCCEO-GOCC";
     const formNoArray = formNo.split("-");
     const department = formNoArray[0];
     const docType = "APPLICATION FORM FOR THE ESTABLISHMENT OF GAMING VENUE";
 
     // Combine data of CTS
-    const ctsNo = `${formNo}-${splitDate}-0001`;
+    const ctsNo = `${formNo}-05152024-0001`;
 
     const OCRData = [
       { data: `Date & Time: ${formattedDateTime}\n`, mode: "byte" },
@@ -235,7 +236,7 @@ export default function Tesseract() {
 
     // let myData = "https://google.com";
     let myData =
-      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link";
+      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=sharing";
 
     async function create(dataForQRcode, logo, qrWidth) {
       const canvas = createCanvas(qrWidth, qrWidth);
@@ -315,10 +316,11 @@ export default function Tesseract() {
     // const pngImg = `data:image/png;base64, ${pngUrl}`;
 
     const qrCodeDataURL = await create(
-      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link",
+      // "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI?1T72DyYh?usp=drive_link",
       // "google.com",
       // OCRData,
       // myData,
+      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=sharing",
       pngImg,
       150,
       50
@@ -358,22 +360,22 @@ export default function Tesseract() {
 
     const pngImage = await newPdfDoc.embedPng(pngImageBytes);
     const pngDims = pngImage.scale(0.15);
-    
+
     // Get the dimensions of the first page or document
     const pageWidth = firstPage.getWidth();
     const pageHeight = firstPage.getHeight();
-    
+
     // Calculate the position to place the image in the lower right corner
     console.log("This is my image width/height", pngDims.width, pngDims.height);
     const imageWidth = 90;
     const imageHeight = 90;
-    
+
     const imageXMargin = 77;
     const imageYMargin = 103;
-    
+
     const imagePosX = pageWidth - imageWidth - imageXMargin;
     const imagePosY = imageYMargin;
-    
+
     // Draw the image on the first page of the document
     firstPage.drawImage(pngImage, {
       x: imagePosX,
@@ -381,26 +383,31 @@ export default function Tesseract() {
       width: imageWidth,
       height: imageHeight,
     });
-    
+
     // Get CTS Number
     const textValue = OCRData[1].data.split(": ")[1];
     // const textValue = `OCCEO-EGLD-415-${OCRData[1].data.split(": ")[1]}`;
     const rectangleTitle = "In following-up, please cite CTS ref #";
-    
+
     // Embed text
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const boldHelveticaFont = await newPdfDoc.embedFont(StandardFonts.HelveticaBold);
-    
+    const boldHelveticaFont = await newPdfDoc.embedFont(
+      StandardFonts.HelveticaBold
+    );
+
     // Calculate the position to place the rectangle title in the rectangle
-    const rectangleTitleWidth = helveticaFont.widthOfTextAtSize(rectangleTitle, 10);
+    const rectangleTitleWidth = helveticaFont.widthOfTextAtSize(
+      rectangleTitle,
+      10
+    );
     const ctsTextWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 10);
     const rectangleWidth = Math.max(rectangleTitleWidth, ctsTextWidth) + 16; // Add margin
     const rectangleHeight = 35;
-    
+
     const qrCenterX = imagePosX + imageWidth / 2;
     const rectanglePosX = qrCenterX - rectangleWidth / 2;
     const rectanglePosY = imagePosY - 37;
-    
+
     // rectangle
     firstPage.drawRectangle({
       x: rectanglePosX,
@@ -408,10 +415,11 @@ export default function Tesseract() {
       width: rectangleWidth,
       height: rectangleHeight,
       borderColor: rgb(0, 0, 0),
-      borderWidth: .5,
+      borderWidth: 0.5,
     });
-    
-    const rectangleTitlePosX = rectanglePosX + (rectangleWidth - rectangleTitleWidth) / 2;
+
+    const rectangleTitlePosX =
+      rectanglePosX + (rectangleWidth - rectangleTitleWidth) / 2;
     const rectangleTitlePosY = rectanglePosY + 20;
 
     // rectangle title
@@ -422,11 +430,11 @@ export default function Tesseract() {
       font: helveticaFont,
       color: rgb(0, 0, 0),
     });
-    
+
     // cts text properties
     const txtPosX = rectanglePosX + (rectangleWidth - ctsTextWidth) / 2; // Center the text within the rectangle
     const txtPosY = rectanglePosY + 5;
-    
+
     // cts text
     firstPage.drawText(textValue, {
       x: txtPosX,
@@ -435,7 +443,28 @@ export default function Tesseract() {
       font: boldHelveticaFont,
       color: rgb(0, 0, 0),
     });
-     
+
+    // Get CST Number
+    const ctsValue = `CRA-AR-GOCC-05152024-0001`;
+
+    // ------------------------------------------------------------------------------------------
+
+    // Calculate the position to place the text in the upper right corner
+    const txtWidth = boldHelveticaFont.widthOfTextAtSize(ctsValue, 8);
+    const txtXMargin = 9;
+    const txtYMargin = 10;
+    const txtMargin = txtXMargin + txtYMargin;
+
+    const ctsTxtPosX = pageWidth - txtWidth - txtXMargin;
+    const ctsTxtPosY = txtYMargin;
+
+    firstPage.drawText(ctsValue, {
+      x: ctsTxtPosX,
+      y: ctsTxtPosY,
+      size: 8,
+      font: boldHelveticaFont,
+      color: rgb(0, 0, 0),
+    });
 
     // Serialize the PDFDocument to bytes (a Uint8Array)
     const pdfBytes = await newPdfDoc.save();
