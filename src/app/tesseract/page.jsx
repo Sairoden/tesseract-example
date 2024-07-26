@@ -13,7 +13,7 @@ import { createCanvas, loadImage } from "canvas";
 import QRCode from "qrcode";
 
 // COMPONENTS
-import { SupportingDocs } from "../../components";
+import { SupportingDocs, AcknowledgementReceipt } from "../../components";
 
 // UTILS
 import {
@@ -97,6 +97,7 @@ export default function Tesseract() {
 
       if (data) {
         const OCRData = extractFromInternal(data.text);
+        setText(data.text);
         // const acknowledgement = extractAcknowledgementReceipt(data.text);
 
         // console.log(acknowledgement);
@@ -577,7 +578,7 @@ export default function Tesseract() {
         </div>
       )}
 
-      {cts && <SupportingDocs cts={cts} qrImage={qrImage} />}
+      {/* {cts && <SupportingDocs cts={cts} qrImage={qrImage} />} */}
     </div>
   );
 }
