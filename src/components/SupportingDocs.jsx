@@ -10,8 +10,6 @@ import { pageRotation } from "../utils";
 export default function SupportingDocs({ cts, qrImage }) {
   const [inputFiles, setInputFiles] = useState([]);
 
-  console.log(qrImage);
-
   const handleFilesChange = async e => {
     const files = e.target.files;
 

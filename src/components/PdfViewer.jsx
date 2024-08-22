@@ -1,4 +1,4 @@
-// components/PdfViewer.js
+"use client";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -57,13 +57,18 @@ function PdfViewer({ url, adobePreview }) {
     const initializeAdobeDCView = () => {
       if (window.AdobeDC && window.AdobeDC.View) {
         const adobeDCView = new window.AdobeDC.View({
-          clientId: process.env.NEXT_PUBLIC_ADOBE_CLIENT_ID,
+          // clientId: "45a8e546c01a4b0d901c8c9eecf1aefa",
+          clientId: "67a96ca5dce34d0089b3b557564f1de6",
           divId: viewerRef.current.id,
         });
 
         adobeDCView.previewFile(
           {
-            content: { location: { url } },
+            content: {
+              location: {
+                url: "https://acrobatservices.adobe.com/view-sdk-demo/PDFs/Bodea%20Brochure.pdf",
+              },
+            },
             metaData: { fileName: "sample.pdf" },
           },
           { embedMode: "SIZED_CONTAINER" }
