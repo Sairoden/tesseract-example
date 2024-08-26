@@ -2,11 +2,28 @@
 
 // REACT
 import { useState } from "react";
+
+// LIBRARIES
+import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { createWorker } from "tesseract.js";
+
+// UTILS
+import {
+  extractFromInternal,
+  embedPdf,
+  embedAcknowledgePdf,
+  embedSupportingPdf,
+} from "../../utils";
 
 // ASSETS
 import "./page.css";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  pdfjsWorker ||
+  `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export default function AutomationPage() {
   const [pdfFiles, setPdfFiles] = useState([]);
@@ -26,23 +43,23 @@ export default function AutomationPage() {
       if (data) {
         const { OCRData } = extractFromInternal(data.text);
 
-        return { OCRData };
+        await worker.terminate();
+
+        return OCRData;
       }
     } catch (error) {
       console.error("Error during OCR process:", error);
     }
   };
 
-  const handleOCR = async canvasRef => {
-    if (!file || !canvasRef) return;
-
+  const handleOCR = async file => {
     setIsLoading(true);
 
-    setCanvasRef(canvasRef);
+    console.log("tHIS IS FROM HANDLE OCR");
 
-    const canvasDataUrl = canvasRef.current.toDataURL();
+    const OCRData = await handleTesseract(file);
 
-    const { OCRData } = await handleTesseract(canvasDataUrl);
+    console.log(OCRData);
 
     setOcrData(OCRData);
 
@@ -62,15 +79,17 @@ export default function AutomationPage() {
     // Embed PDF based on acknowledge receipt status
     const { newPdfDoc, cts } = await embedPdf(embedParams);
 
-    setCts(cts);
+    console.log(cts);
 
-    if (files.length > 0 && cts) handleOCRSupportingDocs({ cts, qrData });
+    // setCts(cts);
 
-    // Serialize the PDFDocument to bytes (a Uint8Array)
-    const pdfBytes = await newPdfDoc.save();
+    // if (files.length > 0 && cts) handleOCRSupportingDocs({ cts, qrData });
 
-    const newFile = new File([pdfBytes], cts, { type: file.type });
-    setFile(newFile);
+    // // Serialize the PDFDocument to bytes (a Uint8Array)
+    // const pdfBytes = await newPdfDoc.save();
+
+    // const newFile = new File([pdfBytes], cts, { type: file.type });
+    // setFile(newFile);
 
     setIsLoading(false);
   };
@@ -105,10 +124,41 @@ export default function AutomationPage() {
 
   const handleMainFiles = async event => {
     const files = Array.from(event.target.files);
-    const newPdfs = files.map(file => ({
-      main: { name: file.name, url: URL.createObjectURL(file), file },
-      supportingDocs: [],
-    }));
+    const newPdfs = [];
+
+    for (let file of files) {
+      const pdf = await pdfjsLib.getDocument(URL.createObjectURL(file)).promise;
+      const numPages = pdf.numPages;
+
+      for (let i = 1; i <= numPages; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({ canvasContext: context, viewport: viewport })
+          .promise;
+
+        // Get the image data from the canvas
+        const imgData = canvas.toDataURL("image/png");
+
+        // Do OCR on the image data
+        const ocrResult = await handleOCR(imgData);
+
+        // Store OCR results with the PDF file data
+        newPdfs.push({
+          main: {
+            name: file.name,
+            url: URL.createObjectURL(file),
+            file,
+            ocrData: ocrResult,
+          },
+          supportingDocs: [],
+        });
+      }
+    }
 
     setPdfFiles(prevFiles => [...prevFiles, ...newPdfs]);
   };
@@ -183,7 +233,8 @@ export default function AutomationPage() {
 
   return (
     <div className="container">
-      <canvas ref={canvasRef} style={{ opacity: "0" }}></canvas>
+      <canvas ref={canvasRef}></canvas>
+
       <div className="file-input-container">
         <label className="file-input-label">Upload main document/s:</label>
         <input
