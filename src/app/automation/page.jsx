@@ -9,17 +9,16 @@ import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { createWorker } from "tesseract.js";
+import { PDFDocument } from "pdf-lib";
 
 // UTILS
-import {
-  extractFromInternal,
-  embedPdf,
-  embedAcknowledgePdf,
-  embedSupportingPdf,
-} from "../../utils";
+import { extractFromInternal, embedPdf, embedSupportingPdf } from "../../utils";
 
 // ASSETS
 import "./page.css";
+
+// COMPONENTS
+import { LoadingScreen } from "../../components";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   pdfjsWorker ||
@@ -27,10 +26,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 
 export default function AutomationPage() {
   const [pdfFiles, setPdfFiles] = useState([]);
-  const [cts, setCts] = useState(null);
   const [ocrData, setOcrData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [canvasRef, setCanvasRef] = useState(null);
+  const [qrData] = useState(
+    "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=sharing"
+  );
 
   const handleTesseract = async img => {
     if (!img) return;
@@ -52,19 +53,12 @@ export default function AutomationPage() {
     }
   };
 
-  const handleOCR = async file => {
+  const handleOCR = async (imgData, file) => {
     setIsLoading(true);
 
-    console.log("tHIS IS FROM HANDLE OCR");
-
-    const OCRData = await handleTesseract(file);
-
-    console.log(OCRData);
+    const OCRData = await handleTesseract(imgData);
 
     setOcrData(OCRData);
-
-    let qrData =
-      "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=sharing";
 
     // Extract OCR Data
     const extractedOCRData = OCRData[2].data.split(": ")[1];
@@ -79,104 +73,103 @@ export default function AutomationPage() {
     // Embed PDF based on acknowledge receipt status
     const { newPdfDoc, cts } = await embedPdf(embedParams);
 
-    console.log(cts);
+    const pdfBytes = await newPdfDoc.save();
 
-    // setCts(cts);
-
-    // if (files.length > 0 && cts) handleOCRSupportingDocs({ cts, qrData });
-
-    // // Serialize the PDFDocument to bytes (a Uint8Array)
-    // const pdfBytes = await newPdfDoc.save();
-
-    // const newFile = new File([pdfBytes], cts, { type: file.type });
-    // setFile(newFile);
+    const newFile = new File([pdfBytes], cts, { type: "application/pdf" });
 
     setIsLoading(false);
-  };
-
-  const handleOCRSupportingDocs = async ({ cts, qrData }) => {
-    if (files.length === 0 || !cts) return;
-
-    const modifiedFiles = Array.from(files).map(file => {
-      return new File([file], `${cts}`, { type: file.type });
-    });
-
-    const newFiles = [];
-
-    for (let file of modifiedFiles) {
-      // Define parameters for PDF embedding
-      const embedParams = {
-        qrData,
-        file,
-        cts,
-      };
-
-      const { newPdfDoc } = await embedSupportingPdf(embedParams);
-
-      const pdfBytes = await newPdfDoc.save();
-      const newFile = new File([pdfBytes], cts, { type: file.type });
-
-      newFiles.push(newFile);
-    }
-
-    setFiles(newFiles);
+    return newFile;
   };
 
   const handleMainFiles = async event => {
     const files = Array.from(event.target.files);
+
     const newPdfs = [];
 
     for (let file of files) {
+      // Create a PDF document instance
       const pdf = await pdfjsLib.getDocument(URL.createObjectURL(file)).promise;
-      const numPages = pdf.numPages;
 
-      for (let i = 1; i <= numPages; i++) {
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 1.5 });
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+      // Get the first page of the PDF
+      const page = await pdf.getPage(1);
 
-        await page.render({ canvasContext: context, viewport: viewport })
-          .promise;
+      // Set the scale for rendering the PDF page
+      const viewport = page.getViewport({ scale: 1.5 });
 
-        // Get the image data from the canvas
-        const imgData = canvas.toDataURL("image/png");
+      // Create a canvas element to render the page
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
 
-        // Do OCR on the image data
-        const ocrResult = await handleOCR(imgData);
+      // Render the PDF page onto the canvas
+      await page.render({ canvasContext: context, viewport: viewport }).promise;
 
-        // Store OCR results with the PDF file data
-        newPdfs.push({
-          main: {
-            name: file.name,
-            url: URL.createObjectURL(file),
-            file,
-            ocrData: ocrResult,
-          },
-          supportingDocs: [],
-        });
-      }
+      // Convert the canvas to an image data URL (only for the first page)
+      const imgData = canvas.toDataURL("image/png");
+
+      // Perform OCR on the image data (this doesn't alter the original PDF file)
+      const newFile = await handleOCR(imgData, file);
+
+      // Store OCR results with the PDF file data
+      newPdfs.push({
+        main: {
+          name: newFile.name,
+          oldName: file.name,
+          url: URL.createObjectURL(newFile),
+          file: newFile,
+          imgData,
+        },
+        supportingDocs: [],
+      });
     }
 
+    // Update the state with the new PDF files
     setPdfFiles(prevFiles => [...prevFiles, ...newPdfs]);
   };
 
-  const handleSupportingFiles = (event, index) => {
-    const files = Array.from(event.target.files);
-    const supportingDocs = files.map(file => ({
-      name: file.name,
-      url: URL.createObjectURL(file),
-      file,
-    }));
+  const handleOCRSupportingDocs = async ({ cts, qrData, supportingDocs }) => {
+    const updatedSupportingDocs = await Promise.all(
+      supportingDocs.map(async file => {
+        const embedParams = {
+          qrData,
+          file,
+          cts,
+        };
+
+        const { newPdfDoc } = await embedSupportingPdf(embedParams);
+        const pdfBytes = await newPdfDoc.save();
+        const newFile = new File([pdfBytes], cts, { type: "application/pdf" });
+
+        return {
+          oldName: file.name,
+          name: newFile.name,
+          url: URL.createObjectURL(newFile),
+          file: newFile,
+        };
+      })
+    );
+
+    return updatedSupportingDocs;
+  };
+
+  const handleSupportingFiles = async (event, index) => {
+    const supportingDocs = Array.from(event.target.files);
+
+    const cts = pdfFiles[index].main.name;
+
+    const updatedSupportingDocs = await handleOCRSupportingDocs({
+      cts,
+      qrData,
+      supportingDocs,
+    });
 
     setPdfFiles(prevFiles =>
       prevFiles.map((pdf, i) =>
         i === index
           ? {
               ...pdf,
-              supportingDocs: [...pdf.supportingDocs, ...supportingDocs],
+              supportingDocs: [...pdf.supportingDocs, ...updatedSupportingDocs],
             }
           : pdf
       )
@@ -193,22 +186,26 @@ export default function AutomationPage() {
 
   const exportToZip = async pdfData => {
     const zip = new JSZip();
-    const folder = zip.folder(pdfData.main.name.replace(".pdf", ""));
 
-    // Add main document
-    folder.file(pdfData.main.name, pdfData.main.file);
+    // Create a folder using the main PDF's old name without the ".pdf" extension
+    const folder = zip.folder(pdfData.main.oldName.replace(".pdf", ""));
 
-    // Add supporting documents
-    pdfData.supportingDocs.forEach(doc => {
-      folder.file(doc.name, doc.file);
+    // Add the main document to the folder
+    folder.file(`${pdfData.main.name}.pdf`, pdfData.main.file);
+
+    // Add each supporting document to the same folder
+    pdfData.supportingDocs.forEach((doc, index) => {
+      folder.file(`${doc.name} (${index + 1}).pdf`, doc.file);
     });
 
+    // Generate the zip file and trigger a download
     const zipBlob = await zip.generateAsync({ type: "blob" });
-    saveAs(zipBlob, `${pdfData.main.name.replace(".pdf", "")}.zip`);
+    saveAs(zipBlob, `${pdfData.main.oldName.replace(".pdf", "")}.zip`);
   };
 
   const handleExport = async index => {
     const pdfData = pdfFiles[index];
+
     await exportToZip(pdfData);
   };
 
@@ -216,24 +213,43 @@ export default function AutomationPage() {
     const zip = new JSZip();
 
     for (const pdfData of pdfFiles) {
-      const folder = zip.folder(pdfData.main.name.replace(".pdf", ""));
+      const folder = zip.folder(pdfData.main.oldName.replace(".pdf", ""));
 
       // Add main document
-      folder.file(pdfData.main.name, pdfData.main.file);
+      folder.file(`${pdfData.main.name}.pdf`, pdfData.main.file);
 
       // Add supporting documents
-      pdfData.supportingDocs.forEach(doc => {
-        folder.file(doc.name, doc.file);
+      pdfData.supportingDocs.forEach((doc, index) => {
+        folder.file(`${doc.name} (${index + 1}).pdf`, doc.file);
       });
     }
 
     const zipBlob = await zip.generateAsync({ type: "blob" });
-    saveAs(zipBlob, `all_documents.zip`);
+    saveAs(zipBlob, `PAGCOR_Documents.zip`);
+  };
+
+  const handleRemoveMainDoc = index => {
+    setPdfFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveSupportingDoc = (mainIndex, supportingIndex) => {
+    setPdfFiles(prevFiles =>
+      prevFiles.map((pdf, i) =>
+        i === mainIndex
+          ? {
+              ...pdf,
+              supportingDocs: pdf.supportingDocs.filter(
+                (_, j) => j !== supportingIndex
+              ),
+            }
+          : pdf
+      )
+    );
   };
 
   return (
     <div className="container">
-      <canvas ref={canvasRef}></canvas>
+      <LoadingScreen isLoading={isLoading} />
 
       <div className="file-input-container">
         <label className="file-input-label">Upload main document/s:</label>
@@ -258,20 +274,28 @@ export default function AutomationPage() {
             <li key={index} className="pdf-item">
               <div className="main-doc">
                 <div>
-                  <div className="main-doc-header">Main Document:</div>
-                  <span className="pdf-name">{pdf.main.name}</span>
+                  <div className="main-doc-header">
+                    Main Document:
+                    <button
+                      className="export-button"
+                      onClick={() => handleExport(index)}
+                    >
+                      Export
+                    </button>
+                  </div>
+                  <span
+                    className="remove-link"
+                    onClick={() => handleRemoveMainDoc(index)}
+                  >
+                    X
+                  </span>
+                  <span className="pdf-name">{pdf.main.oldName}</span>
                   <span
                     className="preview-link"
                     onClick={() => handlePreview(pdf.main.url)}
                   >
                     Preview
                   </span>
-                  <button
-                    className="export-button"
-                    onClick={() => handleExport(index)}
-                  >
-                    Export
-                  </button>
                 </div>
 
                 <div>
@@ -287,6 +311,7 @@ export default function AutomationPage() {
                   />
                 </div>
               </div>
+
               {pdf.supportingDocs.length > 0 && (
                 <div className="supporting-docs-container">
                   <div className="supporting-docs-header">
@@ -295,7 +320,15 @@ export default function AutomationPage() {
                   <ul className="supporting-docs-list">
                     {pdf.supportingDocs.map((supportingDoc, i) => (
                       <li key={i} className="supporting-doc">
-                        <span className="pdf-name">{supportingDoc.name}</span>
+                        <span
+                          className="remove-link"
+                          onClick={() => handleRemoveSupportingDoc(index, i)}
+                        >
+                          X
+                        </span>
+                        <span className="pdf-name">
+                          {supportingDoc.oldName}
+                        </span>
                         <span
                           className="preview-link"
                           onClick={() => handlePreview(supportingDoc.url)}

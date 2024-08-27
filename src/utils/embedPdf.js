@@ -33,6 +33,7 @@ export const embedPdf = async ({ qrData, file, OCRData }) => {
     150,
     qrData.length
   );
+
   const pdfBuffer = await file.arrayBuffer();
   const pdfDoc = await PDFDocument.load(pdfBuffer);
 
