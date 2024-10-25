@@ -34,7 +34,33 @@ export const extractFromInternal = text => {
   // const ctsNo = `${department}-${documentTypeAbbreviation}-${splitDate}-${digits}`;
   // const acknowledgeCts = `${department}-${documentTypeAbbreviation}-${arDocumentType}-${arDocumentDate}-${digits}`;
   // const cts = isAcknowledgeReceipt ? acknowledgeCts : ctsNo;
-  const cts = `${department}-${splitDate}-${digits}`;
+  const cts = `${department}-"MOM"-${splitDate}-${digits}`;
+
+  // SUBJECT
+  text = text.replace(/\n\n/g, " ");
+  const lines = text.split("\n");
+  let subjectLine = "";
+  let subjectStarted = false;
+
+  for (let line of lines) {
+    line = line.trim();
+    if (subjectStarted) {
+      // Stop if an empty line, another header, or a sentence-like line is encountered
+      if (line === "" || /^[A-Z ]+ :/.test(line) || /^[A-Z]/.test(line)) {
+        break;
+      } else {
+        subjectLine += " " + line;
+      }
+    } else if (line.startsWith("SUBJECT :")) {
+      subjectStarted = true;
+      subjectLine = line.replace("SUBJECT :", "").trim();
+    }
+  }
+
+  const subject = subjectLine?.trim() || null;
+
+  console.log("HELLO SARIODEN");
+  console.log(subject);
 
   const OCRData = generateOCRData({
     formattedDate,

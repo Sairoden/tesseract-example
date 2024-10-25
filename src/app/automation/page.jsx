@@ -9,7 +9,6 @@ import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { createWorker } from "tesseract.js";
-import { PDFDocument } from "pdf-lib";
 
 // UTILS
 import { extractFromInternal, embedPdf, embedSupportingPdf } from "../../utils";
@@ -56,18 +55,37 @@ export default function AutomationPage() {
   const handleOCR = async (imgData, file) => {
     setIsLoading(true);
 
-    const OCRData = await handleTesseract(imgData);
+    const cleanFileName = fileName => {
+      let cleanedName = fileName
+        .replace(/(\s+-\s+.*|\s+done.*|\s+ok.*|DONE$|OK$)/i, "") // Existing replacements
+        .trim();
 
-    setOcrData(OCRData);
+      cleanedName = cleanedName.replace(/^\d+\.\s*/, ""); // Existing replacements
+      cleanedName = cleanedName.replace(/_\d+$/, ""); // New addition: removes trailing '_0001', '_0005', etc.
+      cleanedName = cleanedName.trim();
 
-    // Extract OCR Data
-    const extractedOCRData = OCRData[2].data.split(": ")[1];
+      return cleanedName;
+    };
+
+    const rawFilename = file.name.split(".pdf")[0];
+    const fileName = cleanFileName(rawFilename);
+
+    console.log(fileName);
+
+    // const OCRData = await handleTesseract(imgData);
+    const OCRData = fileName;
+
+    // setOcrData(OCRData);
+
+    // // Extract OCR Data
+    // const extractedOCRData = OCRData[2].data.split(": ")[1];
 
     // Define parameters for PDF embedding
     const embedParams = {
       qrData,
       file,
-      OCRData: extractedOCRData,
+      // OCRData: extractedOCRData,
+      OCRData,
     };
 
     // Embed PDF based on acknowledge receipt status
@@ -213,19 +231,17 @@ export default function AutomationPage() {
     const zip = new JSZip();
 
     for (const pdfData of pdfFiles) {
-      const folder = zip.folder(pdfData.main.oldName.replace(".pdf", ""));
+      // Add main document directly to the zip (no folder)
+      zip.file(`${pdfData.main.name}.pdf`, pdfData.main.file);
 
-      // Add main document
-      folder.file(`${pdfData.main.name}.pdf`, pdfData.main.file);
-
-      // Add supporting documents
+      // Add supporting documents directly to the zip
       pdfData.supportingDocs.forEach((doc, index) => {
-        folder.file(`${doc.name} (${index + 1}).pdf`, doc.file);
+        zip.file(`${doc.name} (${index + 1}).pdf`, doc.file);
       });
     }
 
     const zipBlob = await zip.generateAsync({ type: "blob" });
-    saveAs(zipBlob, `PAGCOR_Documents.zip`);
+    saveAs(zipBlob, `Final_Documents.zip`);
   };
 
   const handleRemoveMainDoc = index => {

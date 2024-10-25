@@ -70,41 +70,18 @@ export default function CropTesseractPage() {
         // METHOD 2: BY TEXT (DEPARTMENT/SUBJECT)
         function extractOCR(text) {
           // DEPARTMENT
-          const departmentRegex = /^.*?Department$/im;
-          const departmentMatch = text.match(departmentRegex);
-          const departmentName = departmentMatch ? departmentMatch[0] : null;
-          const departmentType = departmentName
-            .split(" ")
-            .map(word => word[0])
-            .join("")
-            .toUpperCase();
+          // const departmentRegex = /^.*?Department$/im;
+          // const departmentMatch = text.match(departmentRegex);
+          // const departmentName = departmentMatch ? departmentMatch[0] : null;
+          // const departmentType = departmentName
+          //   .split(" ")
+          //   .map(word => word[0])
+          //   .join("")
+          //   .toUpperCase();
 
-          // SUBJECT
-          text = text.replace(/\n\n/g, " ");
-          const lines = text.split("\n");
-          let subjectLine = "";
-          let subjectStarted = false;
-
-          for (let line of lines) {
-            line = line.trim();
-            if (subjectStarted) {
-              // Stop if an empty line, another header, or a sentence-like line is encountered
-              if (
-                line === "" ||
-                /^[A-Z ]+ :/.test(line) ||
-                /^[A-Z]/.test(line)
-              ) {
-                break;
-              } else {
-                subjectLine += " " + line;
-              }
-            } else if (line.startsWith("SUBJECT :")) {
-              subjectStarted = true;
-              subjectLine = line.replace("SUBJECT :", "").trim();
-            }
-          }
-
-          const subjectName = subjectLine.trim();
+          const subjectName = "";
+          const departmentName = "";
+          const departmentType = "";
 
           return {
             departmentName,
@@ -137,8 +114,8 @@ export default function CropTesseractPage() {
     const cropX = 0;
     const cropY = 0;
     const cropWidth = canvas.width;
-    // const cropHeight = canvas.height * 0.4;
-    const cropHeight = canvas.height;
+    const cropHeight = canvas.height * 0.7;
+    // const cropHeight = canvas.height;
 
     ctx.strokeStyle = "red";
     ctx.lineWidth = 2;

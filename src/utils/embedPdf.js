@@ -23,8 +23,73 @@ async function getDataUrl(url) {
   });
 }
 
-// --------------------------------------------------------------------------------------------------------
-// NORMAL EMBEDDING DESIGN
+// // --------------------------------------------------------------------------------------------------------
+// // NORMAL EMBEDDING DESIGN
+// export const embedPdf = async ({ qrData, file, OCRData }) => {
+//   const logoDataUrl = await getDataUrl(logo.src);
+//   const qrCodeDataUrl = await createQRCode(
+//     qrData,
+//     logoDataUrl,
+//     150,
+//     qrData.length
+//   );
+
+//   const pdfBuffer = await file.arrayBuffer();
+//   const pdfDoc = await PDFDocument.load(pdfBuffer);
+
+//   const angles = pdfDoc.getPages().map(page => page.getRotation().angle);
+//   const newPdfDoc = await PDFDocument.create();
+
+//   await pageRotation(pdfDoc, newPdfDoc, angles);
+
+//   const rotatedPages = newPdfDoc.getPages(); // Get all pages
+//   const boldHelveticaFont = await newPdfDoc.embedFont(
+//     StandardFonts.HelveticaBold
+//   );
+//   const textValue = OCRData;
+
+//   // Loop through all the pages to apply text and background
+//   rotatedPages.forEach(page => {
+//     const pageWidth = page.getWidth();
+//     const pageHeight = page.getHeight();
+
+//     // const imagePosX = 5;
+//     // const imagePosY = pageHeight - 47;
+
+//     // Commented out QR image embedding for now
+//     // await createQRImage(page, qrCodeDataUrl, 35, 35, imagePosX, imagePosY);
+
+//     const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 8);
+
+//     // Position text in the upper-left corner of each page
+//     const txtPosX = 5;
+//     const txtPosY = pageHeight - 10;
+
+//     // Draw a white rectangle (or document background color) behind the text on each page
+//     page.drawRectangle({
+//       x: txtPosX - 5, // Adjust position for padding
+//       y: txtPosY - 6, // Adjust position for padding
+//       width: txtWidth + 6, // Adjust width for padding
+//       height: 16, // Adjust height as needed
+//       color: rgb(1, 1, 1), // White background to cover any lines or scratches
+//       opacity: 1.0, // Fully opaque to cover any scratches or marks behind
+//     });
+
+//     // Draw the text on each page
+//     page.drawText(textValue, {
+//       x: txtPosX,
+//       y: txtPosY,
+//       size: 8,
+//       font: boldHelveticaFont,
+//     });
+//   });
+
+//   return { newPdfDoc, qrImage: qrCodeDataUrl, cts: textValue };
+// };
+
+// --------------------------------------------------------------------------------
+// FIRST PAGE EMBED ONLY
+
 export const embedPdf = async ({ qrData, file, OCRData }) => {
   const logoDataUrl = await getDataUrl(logo.src);
   const qrCodeDataUrl = await createQRCode(
@@ -42,31 +107,42 @@ export const embedPdf = async ({ qrData, file, OCRData }) => {
 
   await pageRotation(pdfDoc, newPdfDoc, angles);
 
-  const rotatedPages = newPdfDoc.getPages();
-  const firstPage = rotatedPages[0];
-  const pageWidth = firstPage.getWidth();
-  const imagePosX = pageWidth - 35 - 10;
-  const imagePosY = 18;
-
-  await createQRImage(firstPage, qrCodeDataUrl, 35, 35, imagePosX, imagePosY);
-
+  const rotatedPages = newPdfDoc.getPages(); // Get all pages
   const boldHelveticaFont = await newPdfDoc.embedFont(
     StandardFonts.HelveticaBold
   );
   const textValue = OCRData;
 
-  const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 8);
-  const txtPosX = pageWidth - txtWidth - 9;
-  const txtPosY = 10;
+  // Only apply text and background to the first page
+  if (rotatedPages.length > 0) {
+    const firstPage = rotatedPages[0];
+    const pageWidth = firstPage.getWidth();
+    const pageHeight = firstPage.getHeight();
 
-  await createQRText(
-    newPdfDoc,
-    textValue,
-    8,
-    boldHelveticaFont,
-    txtPosX,
-    txtPosY
-  );
+    const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 8);
+
+    // Position text in the upper-left corner of the first page
+    const txtPosX = 5;
+    const txtPosY = pageHeight - 10;
+
+    // Draw a white rectangle (or document background color) behind the text on the first page
+    firstPage.drawRectangle({
+      x: txtPosX - 5, // Adjust position for padding
+      y: txtPosY - 6, // Adjust position for padding
+      width: txtWidth + 6, // Adjust width for padding
+      height: 16, // Adjust height as needed
+      color: rgb(1, 1, 1), // White background to cover any lines or scratches
+      opacity: 1.0, // Fully opaque to cover any scratches or marks behind
+    });
+
+    // Draw the text on the first page
+    firstPage.drawText(textValue, {
+      x: txtPosX,
+      y: txtPosY,
+      size: 8,
+      font: boldHelveticaFont,
+    });
+  }
 
   return { newPdfDoc, qrImage: qrCodeDataUrl, cts: textValue };
 };
@@ -195,8 +271,11 @@ export const embedSupportingPdf = async ({ qrData, file, cts }) => {
   const rotatedPages = newPdfDoc.getPages();
   const firstPage = rotatedPages[0];
   const pageWidth = firstPage.getWidth();
-  const imagePosX = pageWidth - 35 - 10;
-  const imagePosY = 18;
+  const pageHeight = firstPage.getHeight(); // Get the page height
+  // const imagePosX = pageWidth - 35 - 10;
+  // const imagePosY = 18;
+  const imagePosX = 5; // 10 units from the left edge
+  const imagePosY = pageHeight - 47;
 
   await createQRImage(firstPage, qrCodeDataUrl, 35, 35, imagePosX, imagePosY);
 
@@ -206,8 +285,10 @@ export const embedSupportingPdf = async ({ qrData, file, cts }) => {
   const textValue = cts;
 
   const txtWidth = boldHelveticaFont.widthOfTextAtSize(textValue, 8);
-  const txtPosX = pageWidth - txtWidth - 9;
-  const txtPosY = 10;
+  // const txtPosX = pageWidth - txtWidth - 9;
+  // const txtPosY = 10;
+  const txtPosX = 5; // 10 units from the left edge
+  const txtPosY = imagePosY + 37; // Position text above the image
 
   await createQRText(
     newPdfDoc,

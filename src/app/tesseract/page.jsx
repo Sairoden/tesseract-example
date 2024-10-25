@@ -113,7 +113,10 @@ export default function Tesseract() {
   };
 
   const preprocessAndRunOCR = () => {
-    if (!imageLoaded.current) return alert("Please load an image first.");
+    if (!imageLoaded.current) {
+      alert("Please load an image first.");
+      return;
+    }
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -121,8 +124,8 @@ export default function Tesseract() {
     const cropX = 0;
     const cropY = 0;
     const cropWidth = canvas.width;
-    // const cropHeight = canvas.height * 0.4;
-    const cropHeight = canvas.height;
+    const cropHeight = canvas.height * 0.7;
+    // const cropHeight = canvas.height;
 
     ctx.strokeStyle = "red";
     ctx.lineWidth = 2;
@@ -151,11 +154,12 @@ export default function Tesseract() {
     let low = new cv.Mat(src.rows, src.cols, src.type(), [0, 0, 0, 0]);
     let high = new cv.Mat(src.rows, src.cols, src.type(), [150, 150, 150, 255]);
 
-    cv.inRange(src, low, high, dst);
+    // cv.inRange(src, low, high, dst);
 
     cv.imshow(binarizedCanvasRef.current, dst);
 
     const binarizedDataUrl = binarizedCanvasRef.current.toDataURL();
+    handleOCR(binarizedDataUrl);
 
     src.delete();
     dst.delete();
@@ -164,6 +168,59 @@ export default function Tesseract() {
 
     return binarizedDataUrl;
   };
+
+  // const preprocessAndRunOCR = () => {
+  //   if (!imageLoaded.current) return alert("Please load an image first.");
+
+  //   const canvas = canvasRef.current;
+  //   const ctx = canvas.getContext("2d");
+
+  //   const cropX = 0;
+  //   const cropY = 0;
+  //   const cropWidth = canvas.width;
+  //   // const cropHeight = canvas.height * 0.4;
+  //   const cropHeight = canvas.height;
+
+  //   ctx.strokeStyle = "red";
+  //   ctx.lineWidth = 2;
+  //   ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
+
+  //   const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
+
+  //   const tempCanvas = document.createElement("canvas");
+  //   tempCanvas.width = cropWidth;
+  //   tempCanvas.height = cropHeight;
+  //   const tempCtx = tempCanvas.getContext("2d");
+  //   tempCtx.putImageData(imageData, 0, 0);
+
+  //   let src = cv.imread(tempCanvas);
+  //   let dst = new cv.Mat();
+
+  //   let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, 1));
+  //   cv.resize(src, dst, dst.size(), 2, 2, cv.INTER_LINEAR);
+  //   cv.dilate(src, dst, kernel, new cv.Point(-1, -1));
+
+  //   // cv.GaussianBlur(src, dst, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+  //   cv.cvtColor(src, dst, cv.COLOR_BGR2GRAY, 0);
+
+  //   // cv.threshold(src, dst, 50, 100, cv.THRESH_BINARY);
+
+  //   let low = new cv.Mat(src.rows, src.cols, src.type(), [0, 0, 0, 0]);
+  //   let high = new cv.Mat(src.rows, src.cols, src.type(), [150, 150, 150, 255]);
+
+  //   cv.inRange(src, low, high, dst);
+
+  //   cv.imshow(binarizedCanvasRef.current, dst);
+
+  //   const binarizedDataUrl = binarizedCanvasRef.current.toDataURL();
+
+  //   src.delete();
+  //   dst.delete();
+  //   low.delete();
+  //   high.delete();
+
+  //   return binarizedDataUrl;
+  // };
 
   async function getDataUrl(url) {
     const response = await fetch(url);
@@ -317,9 +374,12 @@ export default function Tesseract() {
     const pageHeight = firstPage.getHeight();
 
     // Get CTS Number
-    const textValue = OCRData[1].data.split(": ")[1];
+    // CHANGE 1
+    // const textValue = OC Data[1].data.split(": ")[1];
+    const textValue = [];
 
-    setCts(OCRData[1].data.split(": ")[1]);
+    // setCts(OCRData[1].data.split(": ")[1]);
+    setCts("");
 
     // Embed text
     // Normal font
@@ -542,11 +602,11 @@ export default function Tesseract() {
               boxSizing: "border-box",
             }}
           >
-            <div style={{ border: "1px black solid", width: "75%" }}>
+            {/* <div style={{ border: "1px black solid", width: "75%" }}>
               {ocrData?.map((data, index) => (
                 <p key={index}>{data.data}</p>
               ))}
-            </div>
+            </div> */}
             <div style={{ border: "1px black solid" }}>
               {/* <div ref={qrRef} /> */}
               {qrImage && (
