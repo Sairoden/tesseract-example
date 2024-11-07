@@ -1,116 +1,404 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import pdfToText from "react-pdftotext";
 
-export default function PDFToText() {
-  const [text, setText] = useState("");
+// REACT
+import { useState } from "react";
 
-  const extractText = event => {
-    const file = event.target.files[0];
-    pdfToText(file)
-      .then(text => setText(text))
-      .catch(error => console.error("Failed to extract text from pdf", error));
+// LIBRARIES
+import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
+import { createWorker } from "tesseract.js";
+
+// UTILS
+import {
+  extractFromInternal,
+  embedPdf,
+  embedSupportingPdf,
+  makeTextSearchable,
+} from "../../utils";
+
+// ASSETS
+import "./page.css";
+
+// COMPONENTS
+import { LoadingScreen } from "../../components";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  pdfjsWorker ||
+  `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+export default function AutomationPage() {
+  const [pdfFiles, setPdfFiles] = useState([]);
+  const [ocrData, setOcrData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [canvasRef, setCanvasRef] = useState(null);
+  const [qrData] = useState(
+    "https://drive.google.com/drive/folders/1EYxLifM26EhiiCngk3OF9sBI1T72DyYh?usp=sharing"
+  );
+
+  const handleTesseract = async file => {
+    if (!file) return;
+
+    try {
+      const worker = await createWorker();
+      const extractedAllPages = [];
+
+      // Load the PDF document
+      const pdfDoc = await pdfjsLib.getDocument(URL.createObjectURL(file))
+        .promise;
+      const numPages = pdfDoc.numPages;
+
+      for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+        // Get the page
+        const page = await pdfDoc.getPage(pageNum);
+
+        // Create a canvas element
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        const viewport = page.getViewport({ scale: 1.5 });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        // Render the page on the canvas
+        await page.render({ canvasContext: context, viewport: viewport })
+          .promise;
+
+        // Perform OCR on the canvas
+        const { data } = await worker.recognize(canvas.toDataURL());
+
+        if (data) extractedAllPages.push(data.text);
+      }
+
+      await worker.terminate();
+
+      if (extractedAllPages.length > 0) {
+        return {
+          extractedAllPages,
+          extractedFirstPage: extractedAllPages[0],
+        };
+      } else {
+        throw new Error("No OCR data extracted from any page.");
+      }
+    } catch (error) {
+      console.error("Error during OCR process:", error);
+    }
   };
 
-  function extractTitle(text) {
-    // Regular expression to find the title
-    // let regex = /([\s\S]*?)\sFORM/i;
-    const titleRegex = /([A-Z\s\/]+ FORM)(?=.*GLDD)/;
-    let match = titleRegex.exec(text);
-    if (match) {
-      return match[1].trim();
-    } else {
-      return null; // Handle case where title pattern is not found
+  const handleOCR = async (imgData, file) => {
+    setIsLoading(true);
+
+    const cleanFileName = fileName => {
+      let cleanedName = fileName
+        .replace(/(\s+-\s+.*|\s+done.*|\s+ok.*|DONE$|OK$)/i, "") // Existing replacements
+        .trim();
+
+      cleanedName = cleanedName.replace(/^\d+\.\s*/, ""); // Existing replacements
+      cleanedName = cleanedName.replace(/_\d+$/, ""); // New addition: removes trailing '_0001', '_0005', etc.
+      cleanedName = cleanedName.trim();
+
+      return cleanedName;
+    };
+
+    const rawFilename = file.name.split(".pdf")[0];
+    const fileName = cleanFileName(rawFilename);
+
+    console.log(fileName);
+
+    const { extractedAllPages } = await handleTesseract(file);
+    const OCRData = fileName;
+
+    // setOcrData(OCRData);
+
+    // // Extract OCR Data
+    // const extractedOCRData = OCRData[2].data.split(": ")[1];
+
+    // Define parameters for PDF embedding
+    const embedParams = {
+      qrData,
+      file,
+      // OCRData: extractedOCRData,
+      OCRData,
+    };
+
+    // Embed PDF based on acknowledge receipt status
+    const { newPdfDoc, cts } = await embedPdf(embedParams);
+
+    const textSearchablePdfDoc = await makeTextSearchable(
+      newPdfDoc,
+      extractedAllPages
+    );
+
+    const pdfBytes = await textSearchablePdfDoc.save();
+    // const pdfBytes = await newPdfDoc.save();
+
+    const newFile = new File([pdfBytes], cts, { type: "application/pdf" });
+
+    setIsLoading(false);
+    return newFile;
+  };
+
+  const handleMainFiles = async event => {
+    const files = Array.from(event.target.files);
+
+    const newPdfs = [];
+
+    for (let file of files) {
+      // Create a PDF document instance
+      const pdf = await pdfjsLib.getDocument(URL.createObjectURL(file)).promise;
+
+      // Get the first page of the PDF
+      const page = await pdf.getPage(1);
+
+      // Set the scale for rendering the PDF page
+      const viewport = page.getViewport({ scale: 1.5 });
+
+      // Create a canvas element to render the page
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // Render the PDF page onto the canvas
+      await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+      // Convert the canvas to an image data URL (only for the first page)
+      const imgData = canvas.toDataURL("image/png");
+
+      // Perform OCR on the image data (this doesn't alter the original PDF file)
+      const newFile = await handleOCR(imgData, file);
+
+      // Store OCR results with the PDF file data
+      newPdfs.push({
+        main: {
+          name: newFile.name,
+          oldName: file.name,
+          url: URL.createObjectURL(newFile),
+          file: newFile,
+          imgData,
+        },
+        supportingDocs: [],
+      });
     }
-  }
 
-  // let cleanedText = text.replace(/CRM FORM/g, '');
+    // Update the state with the new PDF files
+    setPdfFiles(prevFiles => [...prevFiles, ...newPdfs]);
+  };
 
-  useEffect(() => {
-    if (text) {
-      let cleanedText = text.replace(/CRM FORM/g, "");
+  const handleOCRSupportingDocs = async ({ cts, qrData, supportingDocs }) => {
+    const updatedSupportingDocs = await Promise.all(
+      supportingDocs.map(async file => {
+        const embedParams = {
+          qrData,
+          file,
+          cts,
+        };
 
-      let title = extractTitle(cleanedText);
-      console.log("Title of the document:", title);
+        const { newPdfDoc } = await embedSupportingPdf(embedParams);
+        const pdfBytes = await newPdfDoc.save();
+        const newFile = new File([pdfBytes], cts, { type: "application/pdf" });
 
-      console.log("TEST 3");
+        return {
+          oldName: file.name,
+          name: newFile.name,
+          url: URL.createObjectURL(newFile),
+          file: newFile,
+        };
+      })
+    );
 
-      // console.log(text);
-      // console.log(extractTitle(text)); // Output: INSTALLATION AND/OR OPERATION OF GAMING TABLES NOTIFICATION
+    return updatedSupportingDocs;
+  };
 
-      // console.log(extractDocumentTitle(text)); // Output: NEW GAME REQUEST AND APPROVAL FORM
-      // const formNoPattern = /([A-Z]+)\s*–\s*(\d+)/;
-      // // Match the pattern in the text
-      // const formNoMatch = text.match(formNoPattern);
-      // let formNo;
-      // // Check if a match is found and extract the data
-      // if (formNoMatch && formNoMatch.length === 3) {
-      //   const formCode = formNoMatch[1];
-      //   const formNumber = formNoMatch[2];
-      //   formNo = `${formCode}-${formNumber}`;
-      // }
-      // console.log(text);
-      // const revisionNoMatch = text.match(/Revision\s*No\.\s*(\d+)/i);
-      // const effectivityMatch = text.match(
-      //   /Effectivity\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i
-      // );
-      // const licenseeMatch = text.match(
-      //   /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([^\s]+)/i
-      // );
-      // const licenseeDateMatch = text.match(
-      //   /Effectivity\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+([^\s]+)\s+([\d\/-]+\s*[\d\/-]*|[A-Za-z]+\s+\d{1,2},\s+\d{4})/i
-      // );
-      // const newText = {
-      //   formNo: formNo ? formNo : null,
-      //   revisionNo: revisionNoMatch ? revisionNoMatch[1].trim() : null,
-      //   effectivity: effectivityMatch ? effectivityMatch[1].trim() : null,
-      //   licensee: licenseeMatch ? licenseeMatch[1].trim() : null,
-      //   licenseeDate: licenseeDateMatch ? licenseeDateMatch[2].trim() : null,
-      // };
-      // const documentList = {
-      //   "GLDD-960": {
-      //     title:
-      //       "INSTALLATION AND/OR OPERATION OF GAMING TABLES NOTIFICATION FORM",
-      //     sections: [
-      //       "SECTION A: OPERATION OF GAMING TABLES",
-      //       "SECTION B: SUBMISSION INSTRUCTIONS",
-      //       "SECTION C: ACKNOWLEDGMENT OF NOTIFICATION",
-      //     ],
-      //   },
-      //   "GLDD-964": {
-      //     title: "NEW GAME REQUEST AND APPROVAL FORM",
-      //     sections: [
-      //       "SECTION A: PROPOSED NEW GAME",
-      //       "SECTION B: SUBMISSION INSTRUCTION",
-      //       "SECTION C: ACTION TAKEN",
-      //     ],
-      //   },
-      // };
-      // const newText2 = {
-      //   ...newText,
-      //   title: documentList[newText.formNo]?.title || null,
-      //   sections: documentList[newText.formNo]?.sections || null,
-      // };
-      // console.log(newText2);
+  const handleSupportingFiles = async (event, index) => {
+    const supportingDocs = Array.from(event.target.files);
+
+    const cts = pdfFiles[index].main.name;
+
+    const updatedSupportingDocs = await handleOCRSupportingDocs({
+      cts,
+      qrData,
+      supportingDocs,
+    });
+
+    setPdfFiles(prevFiles =>
+      prevFiles.map((pdf, i) =>
+        i === index
+          ? {
+              ...pdf,
+              supportingDocs: [...pdf.supportingDocs, ...updatedSupportingDocs],
+            }
+          : pdf
+      )
+    );
+  };
+
+  const resetFiles = () => {
+    setPdfFiles([]);
+  };
+
+  const handlePreview = fileUrl => {
+    window.open(fileUrl, "_blank");
+  };
+
+  const exportToZip = async pdfData => {
+    const zip = new JSZip();
+
+    // Create a folder using the main PDF's old name without the ".pdf" extension
+    const folder = zip.folder(pdfData.main.oldName.replace(".pdf", ""));
+
+    // Add the main document to the folder
+    folder.file(`${pdfData.main.name}.pdf`, pdfData.main.file);
+
+    // Add each supporting document to the same folder
+    pdfData.supportingDocs.forEach((doc, index) => {
+      folder.file(`${doc.name} (${index + 1}).pdf`, doc.file);
+    });
+
+    // Generate the zip file and trigger a download
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    saveAs(zipBlob, `${pdfData.main.oldName.replace(".pdf", "")}.zip`);
+  };
+
+  const handleExport = async index => {
+    const pdfData = pdfFiles[index];
+
+    await exportToZip(pdfData);
+  };
+
+  const handleExportAll = async () => {
+    const zip = new JSZip();
+
+    for (const pdfData of pdfFiles) {
+      // Add main document directly to the zip (no folder)
+      zip.file(`${pdfData.main.name}.pdf`, pdfData.main.file);
+
+      // Add supporting documents directly to the zip
+      pdfData.supportingDocs.forEach((doc, index) => {
+        zip.file(`${doc.name} (${index + 1}).pdf`, doc.file);
+      });
     }
-  }, [text]);
+
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    saveAs(zipBlob, `Final_Documents.zip`);
+  };
+
+  const handleRemoveMainDoc = index => {
+    setPdfFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveSupportingDoc = (mainIndex, supportingIndex) => {
+    setPdfFiles(prevFiles =>
+      prevFiles.map((pdf, i) =>
+        i === mainIndex
+          ? {
+              ...pdf,
+              supportingDocs: pdf.supportingDocs.filter(
+                (_, j) => j !== supportingIndex
+              ),
+            }
+          : pdf
+      )
+    );
+  };
 
   return (
-    <div className="App">
-      <h1 className="text-green-500 text-7xl">Hello Me</h1>
-      <header className="App-header">
-        <label htmlFor="pdf" className="text-7xl">
-          Upload your PDF
-        </label>
+    <div className="container">
+      <LoadingScreen isLoading={isLoading} />
+
+      <div className="file-input-container">
+        <label className="file-input-label">Upload main document/s:</label>
         <input
-          id="pdf"
-          className="p-3 text-lg text-white bg-blue-500 border-none rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
           type="file"
+          multiple
           accept="application/pdf"
-          onChange={extractText}
+          onChange={handleMainFiles}
+          className="file-input"
         />
-        <pre>{text}</pre>
-      </header>
+        <button onClick={resetFiles} className="reset-button">
+          Reset
+        </button>
+        <button onClick={handleExportAll} className="export-all-button">
+          Export All
+        </button>
+      </div>
+
+      <div className="content-container">
+        <ul className="pdf-list">
+          {pdfFiles.map((pdf, index) => (
+            <li key={index} className="pdf-item">
+              <div className="main-doc">
+                <div>
+                  <div className="main-doc-header">
+                    Main Document:
+                    <button
+                      className="export-button"
+                      onClick={() => handleExport(index)}
+                    >
+                      Export
+                    </button>
+                  </div>
+                  <span
+                    className="remove-link"
+                    onClick={() => handleRemoveMainDoc(index)}
+                  >
+                    X
+                  </span>
+                  <span className="pdf-name">{pdf.main.oldName}</span>
+                  <span
+                    className="preview-link"
+                    onClick={() => handlePreview(pdf.main.url)}
+                  >
+                    Preview
+                  </span>
+                </div>
+
+                <div>
+                  <label className="file-input-label">
+                    Upload supporting document/s:
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="application/pdf"
+                    onChange={event => handleSupportingFiles(event, index)}
+                    className="supporting-file-input"
+                  />
+                </div>
+              </div>
+
+              {pdf.supportingDocs.length > 0 && (
+                <div className="supporting-docs-container">
+                  <div className="supporting-docs-header">
+                    Supporting Documents:
+                  </div>
+                  <ul className="supporting-docs-list">
+                    {pdf.supportingDocs.map((supportingDoc, i) => (
+                      <li key={i} className="supporting-doc">
+                        <span
+                          className="remove-link"
+                          onClick={() => handleRemoveSupportingDoc(index, i)}
+                        >
+                          X
+                        </span>
+                        <span className="pdf-name">
+                          {supportingDoc.oldName}
+                        </span>
+                        <span
+                          className="preview-link"
+                          onClick={() => handlePreview(supportingDoc.url)}
+                        >
+                          Preview
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

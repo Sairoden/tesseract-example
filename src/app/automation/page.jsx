@@ -205,15 +205,12 @@ export default function AutomationPage() {
   const exportToZip = async pdfData => {
     const zip = new JSZip();
 
-    // Create a folder using the main PDF's old name without the ".pdf" extension
-    const folder = zip.folder(pdfData.main.oldName.replace(".pdf", ""));
+    // Add the main document directly to the zip
+    zip.file(`${pdfData.main.name}.pdf`, pdfData.main.file);
 
-    // Add the main document to the folder
-    folder.file(`${pdfData.main.name}.pdf`, pdfData.main.file);
-
-    // Add each supporting document to the same folder
+    // Add each supporting document directly to the zip
     pdfData.supportingDocs.forEach((doc, index) => {
-      folder.file(`${doc.name} (${index + 1}).pdf`, doc.file);
+      zip.file(`${doc.name} (${index + 1}).pdf`, doc.file);
     });
 
     // Generate the zip file and trigger a download
@@ -228,6 +225,8 @@ export default function AutomationPage() {
   };
 
   const handleExportAll = async () => {
+    setIsLoading(true);
+
     const zip = new JSZip();
 
     for (const pdfData of pdfFiles) {
@@ -242,6 +241,7 @@ export default function AutomationPage() {
 
     const zipBlob = await zip.generateAsync({ type: "blob" });
     saveAs(zipBlob, `Final_Documents.zip`);
+    setIsLoading(false);
   };
 
   const handleRemoveMainDoc = index => {
