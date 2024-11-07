@@ -55,17 +55,31 @@ export default function AutomationPage() {
   const handleOCR = async (imgData, file) => {
     setIsLoading(true);
 
-    const cleanFileName = fileName => {
-      let cleanedName = fileName
-        .replace(/(\s+-\s+.*|\s+done.*|\s+ok.*|DONE$|OK$)/i, "") // Existing replacements
-        .trim();
+    // const cleanFileName = fileName => {
+    //   let cleanedName = fileName
+    //     .replace(/(\s+-\s+.*|\s+done.*|\s+ok.*|DONE$|OK$)/i, "") // Existing replacements
+    //     .trim();
 
+    //   cleanedName = cleanedName.replace(/^\d+\.\s*/, ""); // Existing replacements
+    //   cleanedName = cleanedName.replace(/_\d+$/, ""); // New addition: removes trailing '_0001', '_0005', etc.
+    //   cleanedName = cleanedName.trim();
+
+    //   return cleanedName;
+    // };
+
+    const cleanFileName = fileName => { 
+      let cleanedName = fileName
+          .replace(/(\s+-\s+.*|\s+done.*|\s+ok.*|DONE$|OK$)/i, "") // Existing replacements
+          .trim();
+  
       cleanedName = cleanedName.replace(/^\d+\.\s*/, ""); // Existing replacements
       cleanedName = cleanedName.replace(/_\d+$/, ""); // New addition: removes trailing '_0001', '_0005', etc.
+      cleanedName = cleanedName.replace(/\(([^0-9]*)\)/g, ""); // New addition: removes parentheses only if they do not contain a number
       cleanedName = cleanedName.trim();
-
+  
       return cleanedName;
-    };
+  };
+  
 
     const rawFilename = file.name.split(".pdf")[0];
     const fileName = cleanFileName(rawFilename);
